@@ -1,0 +1,26 @@
+# Never commit Nintendo data
+*.z64
+*.n64
+*.v64
+*.rom
+baseroms/**/baserom*
+baseroms/**/*.z64
+
+# Build outputs (decomp)
+build/
+expected/
+extracted/
+dist/
+*.bps
+*.ips
+
+# Python / tooling
+.venv/
+__pycache__/
+*.pyc
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+*.blend1
