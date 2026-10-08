@@ -77,19 +77,23 @@ table. A few, like `Z2_ALLEY` for the Laundry Pool and `Z2_BOTI` for the graveya
 
 ---
 
-## Code layout (proposed)
+## Code layout
 
 ```
 src/overlays/actors/ovl_En_Ben/        K4 stalker statue
 src/overlays/actors/ovl_Ben_Director/  K5 event director
-src/ben/                               K1 state, K2 name, K6 fx, K10 meta (linked into code)
+src/ben/ben_core.c                     K1 state, K2 name (linked into the code segment); later K6 fx, K10 meta
+include/ben/ben.h                      feature switches, custom text IDs, shared declarations
 src/ben/events/session_*.c             K5 tables, one file per session (data, not logic)
 assets/ben/                            our new text, sequences and textures (no vanilla data)
-tools/ben/                             make_patch.sh, seq reverse script, helpers
+tools/ben/                             make_patch.sh, check_text_ids.py; later the seq reverse script
 ```
 
-Every vanilla edit is wrapped as `#ifdef BEN_DROWNED … #endif`, or at least tagged
-`// BEN:`, so upstream decomp merges stay easy to review.
+Every vanilla edit is tagged `// BEN:` (and gated by a switch in `include/ben/ben.h` where that
+makes sense), so upstream decomp merges stay easy to review: `git grep "BEN:"` lists them all.
+
+**IDs we own:** actor `ACTOR_EN_BEN` = 0x2B2 (appended after the last vanilla actor). Text IDs
+0x4D00–0x4DFF, checked against vanilla by `tools/ben/check_text_ids.py`.
 
 ---
 

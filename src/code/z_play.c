@@ -36,6 +36,7 @@ u8 sMotionBlurStatus;
 #include "overlays/gamestates/ovl_opening/z_opening.h"
 #include "overlays/gamestates/ovl_file_choose/z_file_select.h"
 #include "libu64/debug.h"
+#include "ben/ben.h" // BEN
 
 s32 gDbgCamEnabled = false;
 u8 D_801D0D54 = false;
@@ -2319,6 +2320,14 @@ void Play_Init(GameState* thisx) {
     }
 
     player = GET_PLAYER(this);
+
+#if BEN_SPIKE_STATUE
+    // BEN: Phase 0.3 spike - the statue waits in South Clock Town
+    if (this->sceneId == SCENE_CLOCKTOWER) {
+        Actor_Spawn(&this->actorCtx, this, ACTOR_EN_BEN, player->actor.world.pos.x, player->actor.world.pos.y,
+                    player->actor.world.pos.z, 0, 0, 0, 0);
+    }
+#endif
 
     Camera_InitFocalActorSettings(&this->mainCamera, &player->actor);
     gDbgCamEnabled = false;

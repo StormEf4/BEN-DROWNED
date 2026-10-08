@@ -81,7 +81,7 @@ stories (drunk father, school-pool bullies). None of these are canon for our pur
 | 5½ | **Moon (false)** | Moon field | C18 | A short stop. The Moon Children (`En_Js`) ask their questions, rewritten: "Your friend is waiting at the stone tower." You're thrown to Ikana. | 5 min |
 | 6 | **St o n e** | Ikana Graveyard → Ikana Canyon → Stone Tower → Inverted Stone Tower | C3, C20 (dream), C7 (reversed Stone Tower) | BEN's save location. **Pamela's father** (`En_Hgo`) halfway into a Gibdo, staging TheTruth.rtf's dream of being made into a statue. **The Elegy of Emptiness is the song that makes statues**: to climb, you make shells of yourself. A playable "sewn into a statue" dream with controls restricted step by step. A second statue that isn't BEN (M3 hint). | 25 min |
 | 7 | **jadusable / free** | Romani Ranch (night) → Clock Tower → Moon → Majora's lair | C19, C21 | At Romani Ranch, "They" come at night, masked, foreshadowing the cult. The finale is on the Moon: "Let's play", with BEN in control of the fight. Then **"The counter resets. I'm glad you did that."** on black. The player's file is renamed BEN. | 20 min |
-| ★ | **CHILDREN** (secret) | ??? | M1–M3 | See §5. | 10 min |
+| ★ | **CHILDREN** (secret) | ??? | M1–M3 | See §5. Requires the Moon Children sub-mission (about 15–25 min spread across sessions). | 10 min |
 
 **Total: about 170 minutes, plus the secret.** If we run long, cut in this order: Session 4
 gets shortened into a 10-minute vignette, the Romani Ranch opening of Session 7 goes, and the OoT
@@ -100,10 +100,10 @@ These keep the haunting coherent and scary rather than random.
 3. **BEN knows what you do outside the game.** That covers resets, saves, erased files and
    turning the power off mid-session (see `TECH_DESIGN.md` → K10). He comments only
    *after* you do it.
-4. **Escalation curve.** Session 1 is subtle. Sessions 2–3 are overt. Sessions 4–6 make
-   the world itself wrong. Session 7 is BEN in control.
-5. **Scare budget.** At most **one hard jump-scare per session**. Everything else is dread:
-   silence, wrong music, being stared at, empty places.
+4. **Escalation curve: from quiet dread to full madness** (D12). See the madness curve in §4a.
+5. **Scare budget.** In Sessions 0–4, at most **one hard jump-scare per session**; everything else
+   is dread (silence, wrong music, being stared at, empty places). From Session 5 on, the budget
+   lifts as the game itself loses its mind.
 6. **Silence is a tool.** Every session has at least one stretch with no music at all.
 7. **The Salesman knows.** The Happy Mask Salesman is the only "person" who seems aware
    of BEN, and he doesn't help.
@@ -112,19 +112,44 @@ These keep the haunting coherent and scary rather than random.
 
 ---
 
+## 4a. The madness curve
+
+The horror **starts psychological and ends in full madness** (D12). Each tier unlocks new tools,
+and earlier tiers' tools stay in use.
+
+| Tier | Sessions | Feels like | Tools that unlock |
+|---|---|---|---|
+| **1. Unease** | 0–1 | "Is something off, or is it me?" | Being called BEN, NPCs who stare a beat too long, a missing NPC, sounds slightly late, the Bombers' Notebook entry |
+| **2. Haunting** | 2–3 | "Something is here with me." | The statue, empty towns, reversed and slowed music, the Salesman's laugh, scripted deaths, "YOU SHOULDN'T HAVE DONE THAT" |
+| **3. Wrongness** | 4–5 | "The world is broken." | Geometry that loops or is missing, wrong textures, NPCs swapped for statues, fake glitches (tearing, corrupted text), the OoT flickers, the file select rewriting itself |
+| **4. Body & mind** | 6 | "It's getting into me." | The dream where Link is sewn into a statue (body horror allowed here, implied rather than graphic), control loss (inputs delayed, inverted, refused), the HUD lying (wrong hearts, wrong time), Link's form changing on its own |
+| **5. Full madness** | 7 | "The game belongs to BEN now." | BEN talks directly and by name, the rules from tier 2 break on purpose (the statue moves while you watch), fake crashes and fake resets, menus and saves turned against you, the cycle counting down wrong |
+
+Constant at every tier: §4 rule 8 (no literal child death on screen), and the madness is always
+*authored*. Every broken thing is a deliberate beat, never real instability.
+
 ## 5. The Moon Children thread (secret epilogue)
 
-- Each of Sessions 1–7 hides one **moon-sigil** (a mark on a wall, a line in the Bombers'
-  Notebook, a mask on a shelf that shouldn't be there). Finding one adds a fragment of
-  cipher text.
-- Assembled, the seven fragments decode to the cult's phrase (final wording TBD, see
-  `DECISIONS.md` → Q5).
-- If all seven were found, **the next boot after the free.wmv ending** is different: the
-  **CHILDREN** epilogue. Ben's ascension is shown in abstract, and a **second entity**
-  appears in a model that "shouldn't be there". The phrase "you shouldn't have done
-  that" is used against the player, and then the cart goes quiet.
+The secret should be **findable by a solo player willing to put in extra effort** (D11). It isn't
+meant to need community cipher-solving.
 
----
+- **The hook (findable):** in Session 1, the Bombers' Notebook gains an extra person-entry with
+  no name, only a crescent moon. It's the game's own quest tracker, so players are pointed at it.
+- **The sub-mission:** each of Sessions 1–7 has **one small optional task** tied to that entry,
+  taking about 2–5 minutes. Finishing it stamps a **moon-sigil** into the notebook and adds one
+  fragment of the cult's phrase. Example tasks:
+  - S1: follow the masked child no one else seems to see through Clock Town at night
+  - S3: return the Deku Butler's son's lost mask to the twisted tree
+  - S4: sit with Darmani's ghost until the music stops (do nothing for 60 seconds)
+  - S5: play Mikau's song backwards on his grave
+  - S6: find the second statue that isn't BEN
+  - S7: answer the Moon Children's questions *truthfully* (about what you actually did this playthrough)
+- **The payoff:** with all seven sigils, **the next boot after the free.wmv ending** is different:
+  the **CHILDREN** epilogue. Ben's ascension is shown in abstract, and a **second entity** appears
+  in a model that "shouldn't be there". "You shouldn't have done that" is turned on the player,
+  and then the cart goes quiet.
+- The fragments assemble into a readable phrase in the notebook (final wording TBD, see
+  `DECISIONS.md` Q5), so the player sees progress without needing outside tools.
 
 ## 6. Original content rules
 

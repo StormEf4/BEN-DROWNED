@@ -1,6 +1,7 @@
 #include "global.h"
 #include "message_data_fmt_nes.h"
 #include "message_data_static.h"
+#include "ben/ben.h" // BEN
 #include "attributes.h"
 
 f32 sNESFontWidths[160] = {
@@ -1112,16 +1113,19 @@ void Message_DecodeNES(PlayState* play) {
             msgCtx->unk120CC = msgCtx->unk120D2;
             break;
         } else if (curChar == MESSAGE_NAME) {
+            // BEN: the name comes from Ben_GetPlayerName() so NPCs can call the player "BEN"
+            const char* playerName = Ben_GetPlayerName();
+
             // Substitute the player name control character for the file's player name.
             for (playerNameLen = ARRAY_COUNT(gSaveContext.save.saveInfo.playerData.playerName); playerNameLen > 0;
                  playerNameLen--) {
-                if (gSaveContext.save.saveInfo.playerData.playerName[playerNameLen - 1] != 0x3E) {
+                if (playerName[playerNameLen - 1] != 0x3E) {
                     break;
                 }
             }
 
             for (i = 0; i < playerNameLen; i++) {
-                curChar = gSaveContext.save.saveInfo.playerData.playerName[i];
+                curChar = playerName[i];
                 if (curChar == 0x3E) {
                     curChar = ' ';
                 } else if (curChar == 0x40) {

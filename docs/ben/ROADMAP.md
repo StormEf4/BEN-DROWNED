@@ -34,8 +34,8 @@ pipeline, and you directing, building, testing and verifying canon. They're for 
 |---|------|-------|-----------|
 | 0.1 | ✅ Repo layout: zeldaret/mm decomp merged into this repo, pinned to `56fa21dd` (DECISIONS D7) | Claude | `make` targets exist in this repo |
 | 0.2 | Build env on your Windows PC via WSL2 (steps in README); you supply your own US ROM | **You** | `make init` prints `OK` on your machine |
-| 0.3 | **Shiftability spike**: one new actor, one new message, one new sequence; `NON_MATCHING=1 COMPARE=0` | Claude writes, you run | Boots on ares and shows the new things |
-| 0.4 | `tools/ben/make_patch.sh` creates the `.bps`; versioning scheme | Claude | The patch applies cleanly to a retail ROM |
+| 0.3 | 🟡 **Shiftability spike** written: `En_Ben` statue actor, BEN name override, message `0x4D00`, slowed Song of Healing. Waiting on your build and run of [`SPIKE_TEST.md`](SPIKE_TEST.md) | Claude wrote it, you run it | Every check in SPIKE_TEST.md passes on ares |
+| 0.4 | 🟡 `tools/ben/make_patch.sh` written (flips, round-trip verified); `tools/ben/check_text_ids.py` guards message IDs | Claude wrote it, you run it | The patch applies cleanly to a retail ROM |
 | 0.5 | Session-select debug boot (extend `ovl_select`) | Claude | You can jump to any scene with flags set |
 | 0.6 | GitHub milestones (one per phase) and issues for every task here | Claude | Board exists |
 | 0.7 | **Canon verification pass**: watch the playlist and resolve every ⚠️ in `STORY_BIBLE.md` §1 | **You** | No ⚠️ left |
@@ -87,7 +87,7 @@ One chapter at a time, **in story order**. Each one follows the same loop:
 
 ## Phase 4 — Secret thread + meta (~2 weeks)
 
-- Seven moon-sigils (one per session) and cipher fragment collection
+- The Moon Children sub-mission: the Bombers' Notebook entry plus seven small optional tasks, one per session (STORY_BIBLE §5)
 - The **CHILDREN** epilogue (secret boot): second entity, ascension
 - K10 reactions: reset mid-session, power-off detection, erased-file reactions, boot count
 
@@ -96,7 +96,7 @@ One chapter at a time, **in story order**. Each one follows the same loop:
 ## Phase 5 — Polish & beta (~3–4 weeks)
 
 - A pacing pass to hit 2–3 hours (time three or more fresh players)
-- Audio mix, silence pass, scare-budget audit (one hard scare per session)
+- Audio mix, silence pass, madness-curve audit (each session sits in its tier, STORY_BIBLE §4a)
 - Hardware matrix: ares (reference), Project64, RMG, plus **1–2 recruited testers with real N64 + flashcart** (SummerCart64 / EverDrive)
 - Soak tests: deaths everywhere, save/reset at every session boundary, 100% sigils
 - A release README with a content note and credits to Jadusable/Alex Hall and ZeldaRET

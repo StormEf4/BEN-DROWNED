@@ -31,12 +31,13 @@ A faithful, 2–3 hour adaptation of Jadusable's (Alex Hall's) 2010 creepypasta 
 | [`docs/ben/STORY_BIBLE.md`](docs/ben/STORY_BIBLE.md) | Canon beat sheet, the chapter outline across Termina, BEN's rules |
 | [`docs/ben/TECH_DESIGN.md`](docs/ben/TECH_DESIGN.md) | The "horror kit" systems and the decomp actors and scenes they hook into |
 | [`docs/ben/DECISIONS.md`](docs/ben/DECISIONS.md) | Decisions we've made together, plus the open questions |
+| [`docs/ben/SPIKE_TEST.md`](docs/ben/SPIKE_TEST.md) | Build and test checklist for the current milestone |
 
 ## Status
 
 **Phase 0: foundation.** The design docs are drafted, and this repo is now a fork of the
-decomp, pinned to upstream `56fa21dd`. Next up: your first matching build and the
-shiftability spike.
+decomp, pinned to upstream `56fa21dd`. The **shiftability spike** (Phase 0.3) is written and waiting
+for its first real build. Run the checklist in [`docs/ben/SPIKE_TEST.md`](docs/ben/SPIKE_TEST.md).
 
 ## Building (Windows 10/11 via WSL2)
 

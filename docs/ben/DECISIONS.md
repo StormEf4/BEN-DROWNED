@@ -16,13 +16,15 @@ A running log of choices we make together. Newest at the bottom of each section.
 | D8 | 2026-10-08 | **Builds run on your Windows PC via WSL2** (Docker as an alternative). Claude writes the code; you build, play and report | The ROM can't go in the repo or the cloud sandbox |
 | D9 | 2026-10-08 | **Roles:** you own **creative direction** (story calls, canon verification, beat-sheet approval, playtesting). Claude owns code, 3D, audio pipeline and docs | Your choice |
 | D10 | 2026-10-08 | **Testing: emulator only.** ares is the accuracy reference. We recruit 1–2 testers with real N64 + flashcart before beta | No hardware on hand |
+| D11 | 2026-10-08 | **The Moon Children secret is findable solo with extra effort**: a Bombers' Notebook entry and one small optional task per session, not a community cipher | Rewarding for a single player, and keeps the ARG flavor |
+| D12 | 2026-10-08 | **Horror arc: start slow and psychological, descend into full madness.** Five tiers (STORY_BIBLE §4a). Body horror is allowed from Session 6 (implied rather than graphic) | Your call; matches how the original escalated |
+| D13 | 2026-10-08 | **Start the Phase 0.3 spike now**, ahead of your first build | Ready to test the moment the toolchain works |
 
 ## Open questions
 
 | # | Question | Blocks |
 |---|----------|--------|
 | Q4 | **Canon pass (yours).** Can you watch the playlist and resolve the ⚠️ items in `STORY_BIBLE.md` §1? (YouTube isn't reachable from the build sandbox.) | Phase 2 |
-| Q5 | Moon Children cipher wording, and how cryptic the secret should be (findable blind, or meant for community solving)? | Phase 4 |
-| Q6 | Content limits: keep it psychological (current plan), or allow body horror in the dream sequence? | Phase 3d |
+| Q5 | Moon Children phrase wording (the seven fragments) | Phase 4 |
 | Q7 | Keep Romani Ranch "They" in Session 7, or cut it first if we run long? | Phase 3e |
 | Q8 | 3D and audio fall to Claude by default. Do you want to recruit a community musician or 3D modeler for the reversed tracks and the dream geometry, or keep it in-house? | Phase 1d / 3d |

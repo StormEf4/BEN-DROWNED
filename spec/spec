@@ -698,6 +698,8 @@ beginseg
 #if MM_VERSION >= N64_US
     include "$(BUILD_DIR)/src/code/z_message_nes.o"
 #endif
+    // BEN: core systems
+    include "$(BUILD_DIR)/src/ben/ben_core.o"
     include "$(BUILD_DIR)/src/code/z_message_staff.o"
     include "$(BUILD_DIR)/src/code/z_player_call.o"
     include "$(BUILD_DIR)/src/code/z_shrink_window.o"
@@ -5146,6 +5148,14 @@ beginseg
     compress
     include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Rsn/z_en_rsn.o"
     include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Rsn/ovl_En_Rsn_reloc.o"
+endseg
+
+// BEN: custom actors
+beginseg
+    name "ovl_En_Ben"
+    compress
+    include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Ben/z_en_ben.o"
+    include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Ben/ovl_En_Ben_reloc.o"
 endseg
 
 beginseg
