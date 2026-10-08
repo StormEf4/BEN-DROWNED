@@ -31,7 +31,8 @@ A faithful, 2–3 hour adaptation of Jadusable's (Alex Hall's) 2010 creepypasta 
 | [`docs/ben/STORY_BIBLE.md`](docs/ben/STORY_BIBLE.md) | Canon beat sheet, the chapter outline across Termina, BEN's rules |
 | [`docs/ben/TECH_DESIGN.md`](docs/ben/TECH_DESIGN.md) | The "horror kit" systems and the decomp actors and scenes they hook into |
 | [`docs/ben/DECISIONS.md`](docs/ben/DECISIONS.md) | Decisions we've made together, plus the open questions |
-| [`docs/ben/SPIKE_TEST.md`](docs/ben/SPIKE_TEST.md) | Build and test checklist for the current milestone |
+| [`docs/ben/BUILDING.md`](docs/ben/BUILDING.md) | Setting up, building, updating and troubleshooting (`./ben`) |
+| [`docs/ben/SPIKE_TEST.md`](docs/ben/SPIKE_TEST.md) | Test checklist for the current milestone |
 
 ## Status
 
@@ -39,26 +40,27 @@ A faithful, 2–3 hour adaptation of Jadusable's (Alex Hall's) 2010 creepypasta 
 decomp, pinned to upstream `56fa21dd`. The **shiftability spike** (Phase 0.3) is written and waiting
 for its first real build. Run the checklist in [`docs/ben/SPIKE_TEST.md`](docs/ben/SPIKE_TEST.md).
 
-## Building (Windows 10/11 via WSL2)
+## Building
 
-1. Install WSL2 with Ubuntu: open PowerShell as admin and run `wsl --install -d Ubuntu`, then reboot.
-2. In the Ubuntu terminal, install the dependencies:
-   ```bash
-   sudo apt update
-   sudo apt install git build-essential binutils-mips-linux-gnu curl python3 python3-pip python3-venv libpng-dev libxml2-dev
-   ```
-3. Clone **inside the Linux filesystem**, not `/mnt/c/...`, because builds there are far slower:
-   ```bash
-   cd ~ && git clone https://github.com/StormEf4/BEN-DROWNED.git && cd BEN-DROWNED
-   ```
-4. Copy **your own** US ROM to `baseroms/n64-us/baserom.z64`. From Windows you can reach
-   the folder at `\\wsl$\Ubuntu\home\<you>\BEN-DROWNED\baseroms\n64-us\`.
-5. Run the first build: `make init -j$(nproc)`. It should end with `build/n64-us/mm-n64-us.z64: OK`.
-   That proves your ROM and toolchain are good.
-6. Open `build/n64-us/mm-n64-us-compressed.z64` in [ares](https://ares-emu.net/) (our accuracy reference).
+You need your own **Majora's Mask (USA, N64)** ROM. Everything else is automatic.
 
-Prefer Docker? See [`docs/BUILDING_DOCKER.md`](docs/BUILDING_DOCKER.md). The original decomp
-README is kept at [`docs/DECOMP_README.md`](docs/DECOMP_README.md).
+**Windows 10/11:** paste this into PowerShell and follow the prompts:
+
+```powershell
+irm https://raw.githubusercontent.com/StormEf4/BEN-DROWNED/HEAD/windows/BEN-Setup.ps1 | iex
+```
+
+**Linux / WSL / macOS:**
+
+```bash
+git clone https://github.com/StormEf4/BEN-DROWNED.git && cd BEN-DROWNED
+./ben setup "/path/to/your/rom.z64"
+```
+
+After that, `./ben update` gets the newest version and builds it, and `./ben run` plays it.
+`./ben doctor` explains any problem. Full guide and troubleshooting: [`docs/ben/BUILDING.md`](docs/ben/BUILDING.md).
+
+The original decomp README (manual `make` instructions) is kept at [`docs/DECOMP_README.md`](docs/DECOMP_README.md).
 
 ## Legal / credits
 

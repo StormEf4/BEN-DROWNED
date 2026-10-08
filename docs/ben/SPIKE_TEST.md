@@ -14,17 +14,19 @@ a new actor overlay, a new message, a change to a vanilla system, and music cont
 | Music swap (K7 runtime fallback) | `En_Ben` update | South Clock Town's music changes to a **slowed, lower** Song of Healing about one second after you arrive |
 | Spawn hook | `src/code/z_play.c` (`Play_Init`) | Only South Clock Town is affected |
 
-## Build steps (WSL2)
+## Build steps
+
+First time: follow [`BUILDING.md`](BUILDING.md) (on Windows that's one PowerShell command).
+After that, every time:
 
 ```bash
-make init -j$(nproc)          # first time only: must end with "mm-n64-us.z64: OK" before our changes count
-# (if init fails the md5 check now, that is expected: our changes are already in the tree.
-#  Run `git stash`, `make init`, `git stash pop` if you want to see the vanilla OK first.)
-python3 tools/ben/check_text_ids.py   # must print "OK: no text ID collisions"
-make -j$(nproc) NON_MATCHING=1 COMPARE=0
+cd ~/BEN-DROWNED
+./ben update      # get the newest version and build it (or ./ben build to rebuild what you have)
+./ben run         # open it in ares
 ```
 
-Output: `build/n64-us/mm-n64-us-compressed.z64`. Open it in **ares**.
+The ROM is written to `dist/BEN-DROWNED-latest.z64`, and on Windows it's also copied to
+`C:\Users\<you>\BEN-DROWNED\BEN-DROWNED-latest.z64`.
 
 ## Test script (about 10 minutes)
 
@@ -46,7 +48,7 @@ Output: `build/n64-us/mm-n64-us-compressed.z64`. Open it in **ares**.
 For each ☐, tell me ✅ or ❌. For any ❌, include:
 - what happened (a screenshot or a short clip from ares helps a lot)
 - the **ares** version
-- the last ~30 lines of the build output if the **build** failed
+- if the **build** failed: the log file `./ben` printed (also at `.ben/logs/latest.log`), and the output of `./ben doctor`
 
 ## Known limits of the spike (by design)
 

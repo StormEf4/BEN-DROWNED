@@ -4,3 +4,9 @@
 *.inc linguist-language=gas
 *.seq linguist-language=gas
 include/audio/aseq.h linguist-language=gas
+
+# BEN DROWNED: shell scripts must keep LF endings (they run in Linux/WSL); Windows scripts use CRLF
+ben text eol=lf
+*.sh text eol=lf
+windows/*.cmd text eol=crlf
+windows/*.ps1 text eol=crlf

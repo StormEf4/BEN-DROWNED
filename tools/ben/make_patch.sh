@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # BEN DROWNED: build the release patch (.bps) from a modified build.
 #
+# Normally you don't call this directly: `./ben patch` builds the hack, fetches Flips and runs this script.
+#
 #   tools/ben/make_patch.sh [path/to/retail-us-rom.z64]
 #
 # The patch is made against the retail US ROM (the compressed one, md5 2a0a8acb61538235bc1094d297fb6556),
-# because that is what players own. It needs Floating IPS (flips) on PATH:
-#   git clone https://github.com/Alcaro/Flips && cd Flips && ./make.sh   (then copy ./flips somewhere on PATH)
+# because that is what players own. It needs Floating IPS (flips) on PATH.
 # flips emits copy instructions for data that moved, so the patch contains our changes, not Nintendo's data.
 set -euo pipefail
 
@@ -19,7 +20,7 @@ OUT="dist/ben-drowned-${VERSION}.bps"
 
 command -v flips >/dev/null || { echo "error: flips not found on PATH (see the header of this script)" >&2; exit 1; }
 [ -f "$BASE" ] || { echo "error: base ROM not found: $BASE" >&2; exit 1; }
-[ -f "$OURS" ] || { echo "error: build not found: $OURS - run: make NON_MATCHING=1 COMPARE=0" >&2; exit 1; }
+[ -f "$OURS" ] || { echo "error: build not found: $OURS - run: ./ben build" >&2; exit 1; }
 
 base_md5="$(md5sum "$BASE" | cut -d' ' -f1)"
 if [ "$base_md5" != "$RETAIL_MD5" ]; then

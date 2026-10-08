@@ -13,18 +13,21 @@ writing event tables, not by writing new C each time.
 
 ## Build & release pipeline
 
+Everything goes through **`./ben`** (see [`BUILDING.md`](BUILDING.md)). It's the stable interface; the decomp's
+`make` targets and flags sit underneath it and can change without users noticing.
+
 ```
-your own ROM ──► baseroms/n64-us/baserom.z64
-                 make init            (extract assets, one time)
-                 make NON_MATCHING=1 COMPARE=0   (our modified build)
-                 ──► build/n64-us/mm-n64-us-compressed.z64
-                 tools/ben/make_patch.sh  (flips --create, vanilla vs ours)
-                 ──► dist/ben-drowned-vX.Y.bps
+./ben setup [ROM]  ─► deps (apt/brew, DEPS_REV) ─► ROM import (tools/ben/rom_tool.py: byte order + md5)
+./ben build        ─► venv (requirements.txt) ─► extraction (make setup + assets, fingerprinted)
+                   ─► make NON_MATCHING=1 COMPARE=0 all ─► check_text_ids.py ─► dist/BEN-DROWNED-<version>.z64
+./ben patch        ─► Flips (pinned, built locally) ─► tools/ben/make_patch.sh ─► dist/BEN-DROWNED-<version>.bps
 ```
 
+- Each `ensure_*` step in `ben` has a fingerprint of its inputs stored in `.ben/stamps/`, so updates redo
+  exactly the steps that went stale. New pipeline stages (e.g. K7 sequence generation) are added the same way.
 - **The ROM and extracted assets are never committed.** `.gitignore` enforces this.
-- Builds go through the decomp's `Dockerfile` (Ubuntu 24.04), so every machine is
-  identical.
+- Windows users run it inside WSL2 through `windows/BEN-Setup.ps1`. Builds are also copied to
+  `%USERPROFILE%\BEN-DROWNED\`.
 - Test targets: **ares** is the accuracy reference and must pass. Project64 and RMG are for quick
   iteration. Real N64 + flashcart testing comes through recruited testers before beta (D10).
 - **Dev boot:** the decomp ships a map-select gamestate (`src/overlays/gamestates/ovl_select`).
@@ -86,7 +89,8 @@ src/ben/ben_core.c                     K1 state, K2 name (linked into the code s
 include/ben/ben.h                      feature switches, custom text IDs, shared declarations
 src/ben/events/session_*.c             K5 tables, one file per session (data, not logic)
 assets/ben/                            our new text, sequences and textures (no vanilla data)
-tools/ben/                             make_patch.sh, check_text_ids.py; later the seq reverse script
+tools/ben/                             rom_tool.py, make_patch.sh, check_text_ids.py; later the seq reverse script
+ben, windows/                          the ./ben build command and the Windows installer
 ```
 
 Every vanilla edit is tagged `// BEN:` (and gated by a switch in `include/ben/ben.h` where that

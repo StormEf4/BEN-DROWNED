@@ -33,7 +33,7 @@ pipeline, and you directing, building, testing and verifying canon. They're for 
 | # | Task | Owner | Done when |
 |---|------|-------|-----------|
 | 0.1 | ✅ Repo layout: zeldaret/mm decomp merged into this repo, pinned to `56fa21dd` (DECISIONS D7) | Claude | `make` targets exist in this repo |
-| 0.2 | Build env on your Windows PC via WSL2 (steps in README); you supply your own US ROM | **You** | `make init` prints `OK` on your machine |
+| 0.2 | 🟡 One-command build env: `./ben` (setup, build, update, run, patch, doctor) plus the Windows installer `windows/BEN-Setup.ps1`. See [`BUILDING.md`](BUILDING.md). You run it with your own US ROM | Claude wrote it, you run it | `./ben setup` finishes on your PC and prints the ROM path |
 | 0.3 | 🟡 **Shiftability spike** written: `En_Ben` statue actor, BEN name override, message `0x4D00`, slowed Song of Healing. Waiting on your build and run of [`SPIKE_TEST.md`](SPIKE_TEST.md) | Claude wrote it, you run it | Every check in SPIKE_TEST.md passes on ares |
 | 0.4 | 🟡 `tools/ben/make_patch.sh` written (flips, round-trip verified); `tools/ben/check_text_ids.py` guards message IDs | Claude wrote it, you run it | The patch applies cleanly to a retail ROM |
 | 0.5 | Session-select debug boot (extend `ovl_select`) | Claude | You can jump to any scene with flags set |

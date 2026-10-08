@@ -40,3 +40,6 @@ dist/
 *.bps
 *.ips
 *.blend1
+
+# BEN DROWNED: local build state (./ben stamps, logs, cached tools, settings)
+.ben/
