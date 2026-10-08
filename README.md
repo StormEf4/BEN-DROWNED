@@ -27,15 +27,37 @@ A faithful, 2–3 hour adaptation of Jadusable's (Alex Hall's) 2010 creepypasta 
 
 | Doc | What it's for |
 | --- | --- |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Phases, milestones, exit criteria and the order we build in |
-| [`docs/STORY_BIBLE.md`](docs/STORY_BIBLE.md) | Canon beat sheet, the chapter outline across Termina, BEN's rules |
-| [`docs/TECH_DESIGN.md`](docs/TECH_DESIGN.md) | The "horror kit" systems and the decomp actors and scenes they hook into |
-| [`docs/DECISIONS.md`](docs/DECISIONS.md) | Decisions we've made together, plus the open questions |
+| [`docs/ben/ROADMAP.md`](docs/ben/ROADMAP.md) | Phases, milestones, exit criteria and the order we build in |
+| [`docs/ben/STORY_BIBLE.md`](docs/ben/STORY_BIBLE.md) | Canon beat sheet, the chapter outline across Termina, BEN's rules |
+| [`docs/ben/TECH_DESIGN.md`](docs/ben/TECH_DESIGN.md) | The "horror kit" systems and the decomp actors and scenes they hook into |
+| [`docs/ben/DECISIONS.md`](docs/ben/DECISIONS.md) | Decisions we've made together, plus the open questions |
 
 ## Status
 
-**Phase 0: foundation.** Design docs are drafted and the decomp toolchain comes next.
-See the roadmap.
+**Phase 0: foundation.** The design docs are drafted, and this repo is now a fork of the
+decomp, pinned to upstream `56fa21dd`. Next up: your first matching build and the
+shiftability spike.
+
+## Building (Windows 10/11 via WSL2)
+
+1. Install WSL2 with Ubuntu: open PowerShell as admin and run `wsl --install -d Ubuntu`, then reboot.
+2. In the Ubuntu terminal, install the dependencies:
+   ```bash
+   sudo apt update
+   sudo apt install git build-essential binutils-mips-linux-gnu curl python3 python3-pip python3-venv libpng-dev libxml2-dev
+   ```
+3. Clone **inside the Linux filesystem**, not `/mnt/c/...`, because builds there are far slower:
+   ```bash
+   cd ~ && git clone https://github.com/StormEf4/BEN-DROWNED.git && cd BEN-DROWNED
+   ```
+4. Copy **your own** US ROM to `baseroms/n64-us/baserom.z64`. From Windows you can reach
+   the folder at `\\wsl$\Ubuntu\home\<you>\BEN-DROWNED\baseroms\n64-us\`.
+5. Run the first build: `make init -j$(nproc)`. It should end with `build/n64-us/mm-n64-us.z64: OK`.
+   That proves your ROM and toolchain are good.
+6. Open `build/n64-us/mm-n64-us-compressed.z64` in [ares](https://ares-emu.net/) (our accuracy reference).
+
+Prefer Docker? See [`docs/BUILDING_DOCKER.md`](docs/BUILDING_DOCKER.md). The original decomp
+README is kept at [`docs/DECOMP_README.md`](docs/DECOMP_README.md).
 
 ## Legal / credits
 

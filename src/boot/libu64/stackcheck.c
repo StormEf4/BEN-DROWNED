@@ -1,0 +1,143 @@
+#include "libu64/stackcheck.h"
+
+#include "macros.h"
+#include "stdbool.h"
+#include "stdint.h"
+
+#include "versions.h"
+
+#if MM_VERSION < N64_US
+#undef PRINTF
+#define PRINTF osSyncPrintf
+#endif
+
+StackEntry* sStackInfoListStart = NULL;
+StackEntry* sStackInfoListEnd = NULL;
+
+void StackCheck_Init(StackEntry* entry, void* stackBottom, void* stackTop, u32 initValue, s32 minSpace,
+                     const char* name) {
+    if (entry == NULL) {
+        sStackInfoListStart = NULL;
+    } else {
+        StackEntry* iter;
+
+        entry->head = stackBottom;
+        entry->tail = stackTop;
+        entry->initValue = initValue;
+        entry->minSpace = minSpace;
+        entry->name = name;
+
+        for (iter = sStackInfoListStart; iter != NULL; iter = iter->next) {
+            if (iter == entry) {
+                PRINTF(
+                    T("stackcheck_init: %08x は既にリスト中にある\n", "stackcheck_init: %08x is already in the list\n"),
+                    entry);
+                return;
+            }
+        }
+
+        entry->prev = sStackInfoListEnd;
+        entry->next = NULL;
+
+        if (sStackInfoListEnd) {
+            sStackInfoListEnd->next = entry;
+        }
+
+        sStackInfoListEnd = entry;
+        if (sStackInfoListStart == NULL) {
+            sStackInfoListStart = entry;
+        }
+
+        if (entry->minSpace != -1) {
+            u32* addr = entry->head;
+
+            while (addr < (u32*)entry->tail) {
+                *addr++ = entry->initValue;
+            }
+        }
+    }
+}
+
+void StackCheck_Cleanup(StackEntry* entry) {
+    u32 inconsistency = false;
+
+    if (entry->prev == NULL) {
+        if (entry == sStackInfoListStart) {
+            sStackInfoListStart = entry->next;
+        } else {
+            inconsistency = true;
+        }
+    } else {
+        entry->prev->next = entry->next;
+    }
+
+    if (!entry->next) {
+        if (entry == sStackInfoListEnd) {
+            sStackInfoListEnd = entry->prev;
+        } else {
+            inconsistency = true;
+        }
+    }
+
+    if (inconsistency) {
+        PRINTF(T("stackcheck_cleanup: %08x リスト不整合です\n", "stackcheck_cleanup: %08x list inconsistency\n"),
+               entry);
+    }
+}
+
+StackStatus StackCheck_GetState(StackEntry* entry) {
+    u32* last;
+    size_t used;
+    size_t free;
+    StackStatus status;
+
+    for (last = entry->head; last < (u32*)entry->tail; last++) {
+        if (entry->initValue != *last) {
+            break;
+        }
+    }
+
+    used = (uintptr_t)entry->tail - (uintptr_t)last;
+    free = (uintptr_t)last - (uintptr_t)entry->head;
+
+    if (free == 0) {
+        status = STACK_STATUS_OVERFLOW;
+    } else if ((free < (size_t)entry->minSpace) && (entry->minSpace != -1)) {
+        status = STACK_STATUS_WARNING;
+    } else {
+        status = STACK_STATUS_OK;
+    }
+
+    PRINTF("head=%08x tail=%08x last=%08x used=%08x free=%08x [%s]\n", entry->head, entry->tail, last, used, free,
+           (entry->name != NULL) ? entry->name : "(null)");
+
+#if MM_VERSION >= N64_US
+    (void)"(null)";
+#endif
+
+    return status;
+}
+
+u32 StackCheck_CheckAll(void) {
+    u32 ret = 0;
+    StackEntry* iter = sStackInfoListStart;
+
+    while (iter != NULL) {
+        StackStatus state = StackCheck_GetState(iter);
+
+        if (state != STACK_STATUS_OK) {
+            ret = 1;
+        }
+        iter = iter->next;
+    }
+
+    return ret;
+}
+
+u32 StackCheck_Check(StackEntry* entry) {
+    if (entry == NULL) {
+        return StackCheck_CheckAll();
+    } else {
+        return StackCheck_GetState(entry);
+    }
+}
