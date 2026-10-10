@@ -52,7 +52,7 @@ start of K10, then use them to make **Sessions 0–2** playable:
 > Skull Kid → empty Clock Town → the statue stalks you → the Laundry Pool → you burn →
 > Song of Time → **"YOU SHOULDN'T HAVE DONE THAT."**
 
-- 1a: K1 state, K2 name override, K3 pre-seeded save (file-select beats)
+- 1a: K1 state, K2 name override, K3 pre-seeded save (file-select beats). Retire the dev intro skip (`BEN_SKIP_INTRO`, D15) once the BOOT and Session 1 opening exist
 - 1b: K4 stalker statue with its `CREEP` and `BEHIND` modes, tuned in an empty test room
 - 1c: K5 director and the `session_02` table
 - 1d: K7 audio pipeline, with the reversed Song of Healing as the first track out of it

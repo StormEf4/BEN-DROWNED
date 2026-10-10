@@ -20,6 +20,7 @@ A running log of choices we make together. Newest at the bottom of each section.
 | D12 | 2026-10-08 | **Horror arc: start slow and psychological, descend into full madness.** Five tiers (STORY_BIBLE §4a). Body horror is allowed from Session 6 (implied rather than graphic) | Your call; matches how the original escalated |
 | D13 | 2026-10-08 | **Start the Phase 0.3 spike now**, ahead of your first build | Ready to test the moment the toolchain works |
 | D14 | 2026-10-08 | **`./ben` is the only build interface.** One-command setup (`windows/BEN-Setup.ps1` on Windows), fingerprinted steps so updates redo only what's stale, and the decomp's make flags hidden. Its commands stay the same for every future build | Your request: a friendlier setup that keeps working as the project grows |
+| D15 | 2026-10-10 | **Skip the intro during development** (`BEN_SKIP_INTRO` in `include/ben/ben.h`). New files start at the South Clock Town door after the dawn card, as human Link with the D6 kit. It gets turned off when the BOOT and Session 1 content replaces the vanilla intro | Faster testing; your request |
 
 ## Open questions
 

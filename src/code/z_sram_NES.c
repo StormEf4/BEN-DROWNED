@@ -4,6 +4,7 @@
 #include "sys_flashrom.h"
 #include "z64horse.h"
 #include "overlays/gamestates/ovl_file_choose/z_file_select.h"
+#include "ben/ben.h" // BEN
 
 void Sram_SyncWriteToFlash(SramContext* sramCtx, s32 curPage, s32 numPages);
 void func_80147314(SramContext* sramCtx, s32 fileNum);
@@ -1803,6 +1804,11 @@ void Sram_InitSave(FileSelectState* fileSelect2, SramContext* sramCtx) {
         gSaveContext.save.saveInfo.playerData.newf[3] = 'D';
         gSaveContext.save.saveInfo.playerData.newf[4] = 'A';
         gSaveContext.save.saveInfo.playerData.newf[5] = '3';
+
+#if BEN_SKIP_INTRO
+        // BEN: dev shortcut - new files start after the intro (see include/ben/ben.h)
+        Ben_ApplyIntroSkip();
+#endif
 
         gSaveContext.save.saveInfo.checksum = Sram_CalcChecksum(&gSaveContext.save, sizeof(Save));
 

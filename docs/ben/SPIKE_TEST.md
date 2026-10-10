@@ -44,7 +44,12 @@ The ROM is written to `dist/BEN-DROWNED-latest.z64`, and on Windows it's also co
 
 ## Round 2 test script (about 5 minutes)
 
-Rebuild with `./ben update`, start a new file, and exit the Clock Tower into South Clock Town.
+Rebuild with `./ben update` and **create a new file** (files made before this update still play the intro).
+The intro is skipped for testing (`BEN_SKIP_INTRO`): after "Dawn of the First Day" you step out of the Clock Tower
+into South Clock Town as **human Link**, with Tatl, the Ocarina, the Song of Time, the Song of Healing and the
+Deku Mask. Play the Song of Time to restart the cycle whenever you want a fresh test.
+
+0. ☐ New file starts outside the Clock Tower door as human Link (no intro)
 
 1. ☐ Within a second or two the music is a **slow, low Song of Healing**
 2. ☐ The statue is **not** at the door with you. Look around: it should be somewhere you weren't looking, facing you
@@ -52,6 +57,7 @@ Rebuild with `./ben update`, start a new file, and exit the Clock Tower into Sou
 4. ☐ Let it reach you. After the text closes it **vanishes**, and about 2 seconds later is somewhere off-camera, **facing you**
 5. ☐ Walk into West/North/East Clock Town: **normal Clock Town music at normal speed**, no statue
 6. ☐ Come back to South Clock Town: the slow Song of Healing returns and the statue reappears out of view
+7. (Optional, now that you're human) ☐ Any NPC who says your name says **BEN**
 
 ## Report back
 

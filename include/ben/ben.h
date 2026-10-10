@@ -11,6 +11,7 @@
 /* Feature switches. Spike features are on so the Phase 0.3 build can be checked. */
 #define BEN_NAME_OVERRIDE 1   // K2: NPC text says "BEN" whatever the file is named
 #define BEN_SPIKE_STATUE 1    // Phase 0.3: spawn the stalker statue in South Clock Town
+#define BEN_SKIP_INTRO 1      // Dev: new files skip the intro and start in South Clock Town (set to 0 to restore it)
 
 /* Custom text IDs. Vanilla never reaches 0x4Dxx (credits start at 0x4E20). */
 #define BEN_TEXT_TERRIBLE_FATE 0x4D00
@@ -21,5 +22,8 @@
 
 /* K2: name shown wherever text uses the player-name control code. Same 8-char encoding as playerName. */
 const char* Ben_GetPlayerName(void);
+
+/* Dev: turn a freshly created save into a post-intro save. Called by Sram_InitSave when BEN_SKIP_INTRO is on. */
+void Ben_ApplyIntroSkip(void);
 
 #endif
