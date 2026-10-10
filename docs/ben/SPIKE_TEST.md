@@ -28,20 +28,30 @@ cd ~/BEN-DROWNED
 The ROM is written to `dist/BEN-DROWNED-latest.z64`, and on Windows it's also copied to
 `C:\Users\<you>\BEN-DROWNED\BEN-DROWNED-latest.z64`.
 
-## Test script (about 10 minutes)
+## Round 1 results (2026-10-10)
 
-1. **Boot.** Title screen, then file select. ☐ Boots with no crash
-2. Make a new file with any name **except** BEN (e.g. `LINK`). ☐
-3. Play the intro until you're in **South Clock Town** as Deku Link (the first time you leave the
-   Clock Tower). ☐ The music becomes a slow, low Song of Healing
-4. **Without moving the camera**, look around: ☐ the statue isn't in view at first (it starts
-   400 units behind you)
-5. Turn the camera to find it. ☐ It never moves while on screen
-6. Turn away for a few seconds, then look back. ☐ It's closer
-7. Let it reach you. ☐ The forced textbox appears with your name shown as **BEN** in red
-8. Close the text. ☐ The statue reappears behind you
-9. Talk to any NPC whose dialogue uses your name. ☐ It says BEN
-10. Leave South Clock Town and come back. ☐ No crash on scene change. ☐ Other areas are untouched
+| # | Check | Result | Follow-up |
+|---|---|---|---|
+| 1 | Boots | ✅ | **The shifted build runs.** New code in the `code` segment, a new overlay, and new text all work |
+| 2 | New file | ✅ | |
+| 3 | Music changes | ❌ | The one-shot music swap lost the race against the scene's own music start. Fixed: the Song of Healing is now made the scene's music, with a watchdog |
+| 4 | Statue starts out of view | ❌ | It appeared at Link's spawn point: at that moment the camera doesn't exist yet and Link is in the doorway, so every spot failed. Fixed: it waits hidden and appears once an unseen spot exists |
+| 5–6 | Weeping-angel movement | ✅ | |
+| 7 | Forced text with BEN | ✅ | This also confirms the name override (K2), since NPC lines go through the same text code |
+| 8 | Reappears behind you | ❌ | It sometimes appeared in front, facing away. "Behind" was measured from Link's back, not from the camera. Fixed: it now picks a spot the camera can't see and turns to face Link |
+| 9 | NPC says BEN | — | Can't test as Deku Link. Covered by #7 |
+| 10 | Other areas untouched | ✅ | |
+
+## Round 2 test script (about 5 minutes)
+
+Rebuild with `./ben update`, start a new file, and exit the Clock Tower into South Clock Town.
+
+1. ☐ Within a second or two the music is a **slow, low Song of Healing**
+2. ☐ The statue is **not** at the door with you. Look around: it should be somewhere you weren't looking, facing you
+3. ☐ It still never moves while any part of it is on screen (even just its head at the edge)
+4. ☐ Let it reach you. After the text closes it **vanishes**, and about 2 seconds later is somewhere off-camera, **facing you**
+5. ☐ Walk into West/North/East Clock Town: **normal Clock Town music at normal speed**, no statue
+6. ☐ Come back to South Clock Town: the slow Song of Healing returns and the statue reappears out of view
 
 ## Report back
 
@@ -56,3 +66,5 @@ For each ☐, tell me ✅ or ❌. For any ❌, include:
 - The music is the Song of Healing **slowed and pitched down**, not truly **reversed**. A real reversed
   sequence needs the extracted song data from your build, so it's Phase 1d (the K7 audio pipeline).
 - The statue appears every time you enter South Clock Town. Story flags (K1) come in Phase 1a.
+- On the third day the game's Final Hours music and the spike's music watchdog will fight. The spike is only meant
+  for Day 1; real per-scene music control comes with K7.

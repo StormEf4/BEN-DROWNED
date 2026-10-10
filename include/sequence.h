@@ -243,6 +243,7 @@ void Audio_PlaySequenceAtDefaultPos(u8 seqPlayerIndex, u16 seqId);
 void Audio_PlaySequenceAtPos(u8 seqPlayerIndex, Vec3f* pos, u16 seqId, f32 maxDist);
 void Audio_PlayMorningSceneSequence(u16 seqId, u8 dayMinusOne);
 void Audio_PlaySceneSequence(u16 seqId, u8 dayMinusOne);
+void Audio_ResetRequestedSceneSeqId(void); // BEN: exported so custom music can hand control back
 void Audio_PlaySubBgm(u16 seqId);
 void Audio_PlaySequenceInCutscene(u16 seqId);
 void Audio_PlayBgm_StorePrevBgm(u16 seqId);
