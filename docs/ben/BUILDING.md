@@ -25,9 +25,11 @@ It walks you through everything:
    Documents for you.
 3. **Downloads the project** into Ubuntu, installs the build tools (asks for your Ubuntu password once),
    extracts the game's assets and builds the hack. The first time takes about **10–30 minutes**.
-4. Opens the folder **`C:\Users\<you>\BEN-DROWNED`** with your ROM in it, and adds two desktop shortcuts:
+4. Opens the folder **`C:\Users\<you>\BEN-DROWNED`** with your ROM in it, and adds three desktop shortcuts:
    - **BEN DROWNED - Update & Build**: gets the newest version and rebuilds it. Use this after every update.
    - **BEN DROWNED - Play**: opens the latest build in ares.
+   - **BEN DROWNED - Make Patch**: updates, builds, writes `BEN-DROWNED-latest.bps` to that same folder and
+     opens it with the patch selected, ready to send. (Already set up? Run the setup command once more to get this shortcut.)
 
 Open `BEN-DROWNED-latest.z64` in [ares](https://ares-emu.net/), our reference emulator.
 
@@ -60,7 +62,7 @@ the Homebrew packages itself.
 | `./ben build` | Rebuild what you have (after editing files). `./ben build --clean` forces a full rebuild. |
 | `./ben run` | Open the latest build in ares (it finds ares or remembers where you told it). |
 | `./ben doctor` | Check your machine and say exactly what to fix. Run this first when something is wrong. |
-| `./ben patch` | Make the release `.bps` patch in `dist/` (Flips is fetched and built automatically). |
+| `./ben patch` | Update, build and make the release `.bps` patch in `dist/` and your Windows folder (Flips is fetched and built automatically). |
 | `./ben clean` | Delete build output (keeps extracted assets, so the next build is quick). |
 | `./ben reset` | Delete everything generated except your ROM. The next build starts from scratch. |
 | `./ben config` | Show or change settings: `EMULATOR` (path to ares), `WINDOWS_COPY` (0 or 1). |
@@ -72,7 +74,7 @@ Where things end up:
 | Your build | `dist/BEN-DROWNED-latest.z64` (plus a copy named after the version, e.g. `BEN-DROWNED-v0.1-3-gabc123.z64`) |
 | Windows copy | `C:\Users\<you>\BEN-DROWNED\` (turn off with `./ben config WINDOWS_COPY 0`) |
 | Logs | `.ben/logs/` (`latest.log` is the most recent step) |
-| Release patch | `dist/BEN-DROWNED-<version>.bps` |
+| Release patch | `dist/BEN-DROWNED-latest.bps` (plus `ben-drowned-<version>.bps`), also copied to the Windows folder |
 
 ## Why it keeps working for future builds
 

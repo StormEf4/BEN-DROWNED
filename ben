@@ -6,7 +6,7 @@
 #   ./ben build         build the hack (redoes any setup step an update needs, automatically)
 #   ./ben update        get the latest version of the project and build it
 #   ./ben run           open the latest build in your emulator
-#   ./ben patch         make the release .bps patch in dist/
+#   ./ben patch         update, build and make the release .bps patch (dist/, plus your Windows BEN-DROWNED folder)
 #   ./ben doctor        check this machine and explain how to fix any problem
 #   ./ben clean         delete build output (fast rebuild, keeps extracted assets)
 #   ./ben reset         delete everything generated except your ROM (next build starts fresh)
@@ -440,11 +440,37 @@ cmd_run() {
 }
 
 cmd_patch() {
+    # One click on Windows: get the latest version (when it's safe to), build, make the patch, show it.
+    if git diff --quiet && git diff --cached --quiet; then
+        step "Getting the latest version"
+        git pull --ff-only >/dev/null 2>&1 && ok "Up to date" || warn "Couldn't update, so the patch is made from the version you have."
+    else
+        warn "You have local changes, so the patch is made from them without updating."
+    fi
     do_build
-    local flips
+    local flips patch win_dir
     flips="$(ensure_flips)"
     step "Making the release patch"
     PATH="$(dirname "$flips"):$PATH" tools/ben/make_patch.sh "$(baserom_file)"
+    patch="$DIST_DIR/ben-drowned-$(build_version).bps"
+    [ -f "$patch" ] || die "The patch wasn't written to $patch."
+    cp -f "$patch" "$DIST_DIR/BEN-DROWNED-latest.bps"
+    ok "Patch: $ROOT/$patch"
+
+    if is_wsl && [ "$(config_get WINDOWS_COPY)" != 0 ]; then
+        win_dir="$(windows_home)"
+        if [ -n "$win_dir" ]; then
+            win_dir="$win_dir/BEN-DROWNED"
+            mkdir -p "$win_dir"
+            cp -f "$patch" "$win_dir/"
+            cp -f "$patch" "$win_dir/BEN-DROWNED-latest.bps"
+            ok "Windows copy: $(wslpath -w "$win_dir/BEN-DROWNED-latest.bps" 2>/dev/null || echo "$win_dir")"
+            # Open the folder with the patch selected, so it's ready to send.
+            (cd /mnt/c && explorer.exe /select,"$(wslpath -w "$win_dir/BEN-DROWNED-latest.bps")") >/dev/null 2>&1 || true
+        fi
+    fi
+    say ""
+    say "${C_GREEN}${C_BOLD}Done.${C_RESET} Players apply the .bps to their own Majora's Mask (USA) ROM with Flips or https://www.marcrobinson.me/BPS/"
 }
 
 cmd_doctor() {
