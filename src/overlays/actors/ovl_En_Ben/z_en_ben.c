@@ -21,11 +21,11 @@
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_DRAW_CULLING_DISABLED | ACTOR_FLAG_LOCK_ON_DISABLED)
 
-#define EN_BEN_CREEP_SPEED 5.0f     // units per frame while unseen
-#define EN_BEN_SPEAK_RANGE 90.0f    // xz distance that triggers the forced conversation
-#define EN_BEN_MUSIC_RETRY_FRAMES 60 // how long to let a requested sequence load before requesting it again
-#define EN_BEN_APPEAR_RETRY_FRAMES 8 // a failed spot search is retried this often, not every frame
-#define EN_BEN_VANISH_FRAMES 40      // how long it stays gone after speaking
+#define EN_BEN_CREEP_SPEED 5.0f         // units per frame while unseen
+#define EN_BEN_SPEAK_RANGE 90.0f        // xz distance that triggers the forced conversation
+#define EN_BEN_MUSIC_RETRY_FRAMES 60    // how long to let a requested sequence load before requesting it again
+#define EN_BEN_APPEAR_RETRY_FRAMES 8    // a failed spot search is retried this often, not every frame
+#define EN_BEN_VANISH_FRAMES 40         // how long it stays gone after speaking
 #define EN_BEN_CREEP_SPEED_REWOUND 8.0f // after the Song of Time
 #define EN_BEN_CONFRONT_DIST 120.0f     // how far in front of you it stands after the Song of Time
 #define EN_BEN_CONFRONT_DELAY 90        // frames to wait after arriving, so the day title has gone
