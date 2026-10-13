@@ -15,6 +15,7 @@ typedef struct EnBen {
     /* 0x196 */ u8 hasSpoken;
     /* 0x197 */ u8 isHidden;       // not drawn and not solid while waiting for an unseen spot to appear in
     /* 0x198 */ u8 musicWarped;    // tempo/pitch already applied to the current playback
+    /* 0x199 */ u8 isConfronting;  // demo teaser: appear in plain sight after the Song of Time and say so
     /* 0x19A */ s16 appearDelay;   // frames until the next attempt to appear (spaces out the spot search)
 } EnBen; // size = 0x19C
 

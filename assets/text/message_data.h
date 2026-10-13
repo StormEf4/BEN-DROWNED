@@ -15,6 +15,14 @@ HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
 )
 )
 
+// BEN_TEXT_SHOULDNT_HAVE: the statue, in front of you, after you play the Song of Time (demo teaser)
+DEFINE_MESSAGE(0x4D01, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+COLOR_RED "YOU SHOULDN'T HAVE DONE THAT." COLOR_DEFAULT
+)
+)
+
 /*
  * The following two messages should be kept last and in this order.
  * Message 0xFFFD must be last to not break the message debugger.
