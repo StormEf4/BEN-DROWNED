@@ -9,6 +9,27 @@
 // "BEN" in the file-select character encoding: 0x0A + n is the nth capital letter, 0x3E is a space.
 static char sBenName[8] = { 0x0B, 0x0E, 0x17, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E };
 
+// Demo teaser state. Lives in the code segment, so it survives the Song of Time's scene reload but not a reboot.
+static u8 sHasRewound = false;
+static u8 sHasWarned = false;
+
+void Ben_OnSongOfTime(void) {
+    sHasRewound = true;
+    sHasWarned = false;
+}
+
+s32 Ben_HasRewound(void) {
+    return sHasRewound;
+}
+
+void Ben_SetWarned(void) {
+    sHasWarned = true;
+}
+
+s32 Ben_HasWarned(void) {
+    return sHasWarned;
+}
+
 const char* Ben_GetPlayerName(void) {
     if (BEN_NAME_OVERRIDE) {
         return sBenName;
@@ -24,6 +45,10 @@ const char* Ben_GetPlayerName(void) {
  * Deku Mask.
  */
 void Ben_ApplyIntroSkip(void) {
+    // A brand new file starts the teaser from the beginning.
+    sHasRewound = false;
+    sHasWarned = false;
+
     gSaveContext.save.isFirstCycle = true;
     gSaveContext.save.cutsceneIndex = 0; // no intro cutscene
     gSaveContext.save.playerForm = PLAYER_FORM_HUMAN;

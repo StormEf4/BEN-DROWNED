@@ -46,6 +46,7 @@
 #include "assets/objects/object_link_zora/object_link_zora.h"
 #include "assets/objects/object_link_nuts/object_link_nuts.h"
 #include "assets/objects/object_link_child/object_link_child.h"
+#include "ben/ben.h" // BEN
 
 #pragma increment_block_number "n64-us:128"
 
@@ -17463,6 +17464,9 @@ void Player_Action_63(Player* this, PlayState* play) {
                 (play->msgCtx.ocarinaMode == OCARINA_MODE_APPLY_INV_SOT_SLOW)) {
                 if (play->msgCtx.ocarinaMode == OCARINA_MODE_APPLY_SOT) {
                     if (!func_8082DA90(play)) {
+#if BEN_DEMO_TEASER
+                        Ben_OnSongOfTime(); // BEN: the statue remembers that you rewound time
+#endif
                         if (gSaveContext.save.saveInfo.playerData.threeDayResetCount == 1) {
                             play->nextEntrance = ENTRANCE(CUTSCENE, 1);
                         } else {

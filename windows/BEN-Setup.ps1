@@ -11,7 +11,8 @@
 #   2. Asks you to pick your Majora's Mask (USA) ROM.
 #   3. Downloads the project into your Ubuntu home folder (or updates it).
 #   4. Runs `./ben setup`, which installs build tools, extracts assets and builds the hack.
-#   5. Puts two shortcuts on your desktop: "BEN DROWNED - Update & Build" and "BEN DROWNED - Play".
+#   5. Puts three shortcuts on your desktop: "BEN DROWNED - Update & Build", "BEN DROWNED - Play" and
+#      "BEN DROWNED - Make Patch" (updates, builds, writes the .bps and opens its folder).
 #
 # Written for Windows PowerShell 5.1 (built into Windows 10/11). Kept free of `exit` so that running it through
 # `iex` never closes your PowerShell window.
@@ -97,7 +98,8 @@ function New-BenShortcuts([string]$Distro) {
         $wsl = Join-Path $env:WINDIR 'System32\wsl.exe'
         $items = @(
             @{ Name = 'BEN DROWNED - Update & Build'; Command = 'update' },
-            @{ Name = 'BEN DROWNED - Play'; Command = 'run' }
+            @{ Name = 'BEN DROWNED - Play'; Command = 'run' },
+            @{ Name = 'BEN DROWNED - Make Patch'; Command = 'patch' }
         )
         foreach ($item in $items) {
             $lnk = $shell.CreateShortcut((Join-Path $desktop ($item.Name + '.lnk')))
@@ -106,7 +108,7 @@ function New-BenShortcuts([string]$Distro) {
             $lnk.WorkingDirectory = [Environment]::GetFolderPath('UserProfile')
             $lnk.Save()
         }
-        Write-BenOk 'Desktop shortcuts: "BEN DROWNED - Update & Build" and "BEN DROWNED - Play"'
+        Write-BenOk 'Desktop shortcuts: "BEN DROWNED - Update & Build", "BEN DROWNED - Play" and "BEN DROWNED - Make Patch"'
     } catch {
         Write-BenWarn "Could not create desktop shortcuts: $($_.Exception.Message)"
     }

@@ -33,6 +33,7 @@ A faithful, 2–3 hour adaptation of Jadusable's (Alex Hall's) 2010 creepypasta 
 | [`docs/ben/DECISIONS.md`](docs/ben/DECISIONS.md) | Decisions we've made together, plus the open questions |
 | [`docs/ben/BUILDING.md`](docs/ben/BUILDING.md) | Setting up, building, updating and troubleshooting (`./ben`) |
 | [`docs/ben/SPIKE_TEST.md`](docs/ben/SPIKE_TEST.md) | Test checklist for the current milestone |
+| [`docs/ben/DEMO.md`](docs/ben/DEMO.md) | The playable 10 minute teaser: what happens and how to test it |
 
 ## Status
 
