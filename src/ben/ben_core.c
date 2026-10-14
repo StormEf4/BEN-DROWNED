@@ -12,6 +12,31 @@ static char sBenName[8] = { 0x0B, 0x0E, 0x17, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E };
 // Demo teaser state. Lives in the code segment, so it survives the Song of Time's scene reload but not a reboot.
 static u8 sHasRewound = false;
 static u8 sHasWarned = false;
+static u8 sSightings = 0;
+
+s32 Ben_IsHauntedScene(s16 sceneId) {
+    switch (sceneId) {
+        case SCENE_CLOCKTOWER: // South Clock Town
+        case SCENE_TOWN:       // East Clock Town
+        case SCENE_ICHIBA:     // West Clock Town
+        case SCENE_BACKTOWN:   // North Clock Town
+        case SCENE_ALLEY:      // Laundry Pool
+            return true;
+
+        default:
+            return false;
+    }
+}
+
+s32 Ben_GetSightings(void) {
+    return sSightings;
+}
+
+void Ben_AddSighting(void) {
+    if (sSightings < 255) {
+        sSightings++;
+    }
+}
 
 void Ben_OnSongOfTime(void) {
     sHasRewound = true;
@@ -48,6 +73,7 @@ void Ben_ApplyIntroSkip(void) {
     // A brand new file starts the teaser from the beginning.
     sHasRewound = false;
     sHasWarned = false;
+    sSightings = 0;
 
     gSaveContext.save.isFirstCycle = true;
     gSaveContext.save.cutsceneIndex = 0; // no intro cutscene

@@ -2322,8 +2322,8 @@ void Play_Init(GameState* thisx) {
     player = GET_PLAYER(this);
 
 #if BEN_SPIKE_STATUE
-    // BEN: Phase 0.3 spike - the statue waits in South Clock Town
-    if (this->sceneId == SCENE_CLOCKTOWER) {
+    // BEN: the statue haunts all of Clock Town and the Laundry Pool
+    if (Ben_IsHauntedScene(this->sceneId)) {
         Actor_Spawn(&this->actorCtx, this, ACTOR_EN_BEN, player->actor.world.pos.x, player->actor.world.pos.y,
                     player->actor.world.pos.z, 0, 0, 0, 0);
     }

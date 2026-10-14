@@ -1,18 +1,16 @@
 /*
  * File: z_en_ben.c
  * Overlay: ovl_En_Ben
- * Description: BEN DROWNED - the Elegy of Emptiness statue that follows you (K4 stalker).
+ * Description: BEN DROWNED - the Elegy of Emptiness statue (K4 stalker), as a cryptid rather than a follower.
  *
- * Phase 0.3 spike behavior (CREEP mode):
- *  - Starts hidden and appears somewhere the camera can't see, facing the player.
- *  - Never moves while any part of it is on screen. While off screen it closes the distance.
- *  - When it reaches you it forces a conversation (BEN_TEXT_TERRIBLE_FATE), then vanishes and reappears out of view.
- *  - Makes a slowed, pitched-down Song of Healing the scene's music.
- *
- * Demo teaser (BEN_DEMO_TEASER):
- *  - South Clock Town is emptied of people.
- *  - After you play the Song of Time, it breaks its own rule once: it appears right in front of you at dawn and says
- *    BEN_TEXT_SHOULDNT_HAVE. From then on it is faster and the music is slower and lower.
+ * Behavior (STORY_BIBLE.md §4):
+ *  - Clock Town and the Laundry Pool are empty and silent. The statue is hidden most of the time.
+ *  - Now and then it stands somewhere you aren't looking: far down a street, around a corner, behind you. It never
+ *    moves while you can see it. Once you've looked at it and look away, it's gone.
+ *  - Every sighting puts the next one a little closer, across districts (Ben_GetSightings).
+ *  - The first sighting wakes the music: a slowed, pitched-down Song of Healing. Until then there is none.
+ *  - It almost never speaks. The one line it has is after the Song of Time, when it breaks its rule and is standing
+ *    right in front of you at dawn: "YOU SHOULDN'T HAVE DONE THAT."
  */
 
 #include "z_en_ben.h"
@@ -21,14 +19,24 @@
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_DRAW_CULLING_DISABLED | ACTOR_FLAG_LOCK_ON_DISABLED)
 
-#define EN_BEN_CREEP_SPEED 5.0f         // units per frame while unseen
-#define EN_BEN_SPEAK_RANGE 90.0f        // xz distance that triggers the forced conversation
-#define EN_BEN_MUSIC_RETRY_FRAMES 60    // how long to let a requested sequence load before requesting it again
-#define EN_BEN_APPEAR_RETRY_FRAMES 8    // a failed spot search is retried this often, not every frame
-#define EN_BEN_VANISH_FRAMES 40         // how long it stays gone after speaking
-#define EN_BEN_CREEP_SPEED_REWOUND 8.0f // after the Song of Time
-#define EN_BEN_CONFRONT_DIST 120.0f     // how far in front of you it stands after the Song of Time
-#define EN_BEN_CONFRONT_DELAY 90        // frames to wait after arriving, so the day title has gone
+// Game logic runs at 20 frames per second.
+#define EN_BEN_FIRST_LURK_MIN 140    // after entering an area, the earliest it can first appear (7 s)
+#define EN_BEN_FIRST_LURK_RANGE 160  // plus up to this much more
+#define EN_BEN_LURK_MIN 260          // between sightings: silence and nothing (13 s at the closest)
+#define EN_BEN_LURK_RANGE 240        // plus up to this much more
+#define EN_BEN_LURK_SHRINK 40        // each sighting so far takes this off the wait
+#define EN_BEN_LURK_LONGEST 700      // early waits are this long at most (35 s), before the random part
+#define EN_BEN_PATIENCE 400          // if you never look at it for this long (20 s), it goes somewhere else
+#define EN_BEN_NOTICE_FRAMES 8       // in plain view this long counts as you having seen it
+#define EN_BEN_GONE_FRAMES 3         // out of view this long after you saw it, and it's gone
+#define EN_BEN_TOO_CLOSE 220.0f      // walk up to it and it isn't there any more
+#define EN_BEN_RETRY_FRAMES 8        // a failed spot search is retried this often, not every frame
+#define EN_BEN_MUSIC_RETRY_FRAMES 60 // how long to let a requested sequence load before requesting it again
+#define EN_BEN_LAUGH_EVERY 3         // the Salesman's laugh answers every third time it vanishes
+
+#define EN_BEN_CONFRONT_DIST 120.0f // after the Song of Time: how far in front of you it stands
+#define EN_BEN_CONFRONT_DELAY 90    // frames to wait after arriving, so the day title has gone
+#define EN_BEN_CONFRONT_RANGE 220.0f
 
 #define EN_BEN_REWOUND_TEMPO_SCALE 45
 #define EN_BEN_REWOUND_FREQ_SCALE 650
@@ -38,9 +46,9 @@ void EnBen_Destroy(Actor* thisx, PlayState* play);
 void EnBen_Update(Actor* thisx, PlayState* play);
 void EnBen_Draw(Actor* thisx, PlayState* play);
 
-void EnBen_WaitToAppear(EnBen* this, PlayState* play);
-void EnBen_Creep(EnBen* this, PlayState* play);
-void EnBen_Speak(EnBen* this, PlayState* play);
+void EnBen_Lurk(EnBen* this, PlayState* play);
+void EnBen_Stand(EnBen* this, PlayState* play);
+void EnBen_Confront(EnBen* this, PlayState* play);
 void EnBen_Speaking(EnBen* this, PlayState* play);
 
 ActorProfile En_Ben_Profile = {
@@ -80,19 +88,22 @@ static InitChainEntry sInitChain[] = {
     ICHAIN_S8(colChkInfo.mass, MASS_IMMOVABLE, ICHAIN_STOP),
 };
 
-// Heights (feet, chest, head) checked against the camera: if any is on screen, the statue counts as seen.
+// Heights (feet, chest, head) checked against the camera: if any is in plain view, the statue counts as seen.
 static f32 sBodyCheckHeights[] = { 10.0f, 40.0f, 75.0f };
 
-// Distances tried when looking for somewhere to appear, nearest-feeling first.
-static f32 sAppearDistances[] = { 400.0f, 550.0f, 300.0f };
+// How far away each sighting is, first to last. After the last one it stays that close.
+static f32 sSightingDistances[] = { 1100.0f, 950.0f, 800.0f, 650.0f, 520.0f, 400.0f, 300.0f };
 
-#define EN_BEN_APPEAR_DIRECTIONS 16
+// Fallbacks when nothing fits at the planned distance (narrow alleys, the Laundry Pool).
+static f32 sDistanceScales[] = { 1.0f, 0.8f, 0.6f, 0.45f };
+
+#define EN_BEN_SPOT_DIRECTIONS 16
 
 /**
  * True if a world point is inside the view frustum and in front of the camera.
  * (Checking x/y alone can be fooled by points behind the camera.)
  */
-s32 EnBen_IsPointSeen(PlayState* play, Vec3f* point) {
+s32 EnBen_IsPointInFrustum(PlayState* play, Vec3f* point) {
     Vec3f projectedPos;
     f32 invW;
 
@@ -106,9 +117,21 @@ s32 EnBen_IsPointSeen(PlayState* play, Vec3f* point) {
 }
 
 /**
- * True if any part of a statue standing at `base` would be on screen.
+ * True if the camera has a clear line to a world point (no wall, floor or ceiling in between).
  */
-s32 EnBen_IsBodySeen(PlayState* play, Vec3f* base) {
+s32 EnBen_IsPointInSight(PlayState* play, Vec3f* point) {
+    Camera* camera = GET_ACTIVE_CAM(play);
+    Vec3f hitPos;
+    CollisionPoly* poly;
+    s32 bgId;
+
+    return !BgCheck_EntityLineTest1(&play->colCtx, &camera->eye, point, &hitPos, &poly, true, true, true, true, &bgId);
+}
+
+/**
+ * True if any part of a statue standing at `base` would be in plain view: on screen and not behind a building.
+ */
+s32 EnBen_IsBodyVisible(PlayState* play, Vec3f* base) {
     Vec3f point;
     s32 i;
 
@@ -116,7 +139,7 @@ s32 EnBen_IsBodySeen(PlayState* play, Vec3f* base) {
         point.x = base->x;
         point.y = base->y + sBodyCheckHeights[i];
         point.z = base->z;
-        if (EnBen_IsPointSeen(play, &point)) {
+        if (EnBen_IsPointInFrustum(play, &point) && EnBen_IsPointInSight(play, &point)) {
             return true;
         }
     }
@@ -148,7 +171,7 @@ s32 EnBen_FindSpot(PlayState* play, Player* player, s16 yaw, f32 dist, Vec3f* ou
 
     target.y = player->actor.world.pos.y + 100.0f;
     floorY = BgCheck_EntityRaycastFloor3(&play->colCtx, &poly, &bgId, &target);
-    if ((floorY == BGCHECK_Y_MIN) || (fabsf(floorY - player->actor.world.pos.y) > 100.0f)) {
+    if ((floorY == BGCHECK_Y_MIN) || (fabsf(floorY - player->actor.world.pos.y) > 150.0f)) {
         return false; // no floor, or a big drop or climb
     }
 
@@ -158,30 +181,40 @@ s32 EnBen_FindSpot(PlayState* play, Player* player, s16 yaw, f32 dist, Vec3f* ou
     return true;
 }
 
-/**
- * Try to put the statue somewhere safe that the camera can't see, facing the player. The search starts on the
- * camera's side of the player (behind the camera) and fans out around the player.
- * Returns false (and leaves the statue where it is) if no such spot exists right now.
- */
-s32 EnBen_TryAppearOutOfView(EnBen* this, PlayState* play) {
+void EnBen_PlaceAt(EnBen* this, PlayState* play, Vec3f* pos) {
     Player* player = GET_PLAYER(play);
-    s16 towardCameraYaw = Camera_GetCamDirYaw(GET_ACTIVE_CAM(play)) + 0x8000;
+
+    this->actor.world.pos = *pos;
+    this->actor.prevPos = *pos;
+    this->actor.velocity.y = 0.0f;
+    // Facing you, decided once. It never turns while you can see it.
+    this->actor.shape.rot.y = Math_Vec3f_Yaw(pos, &player->actor.world.pos);
+    this->actor.world.rot.y = this->actor.shape.rot.y;
+}
+
+/**
+ * Put the statue somewhere out of plain view at about the distance this sighting calls for. The search starts on
+ * the far side of the camera (behind you) and fans out, so the usual way to find it is to turn around.
+ * Returns false (and leaves the statue hidden) if no such spot exists right now.
+ */
+s32 EnBen_TryPlaceSighting(EnBen* this, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+    s16 behindYaw = Camera_GetCamDirYaw(GET_ACTIVE_CAM(play)) + 0x8000;
+    s32 sighting = CLAMP_MAX(Ben_GetSightings(), ARRAY_COUNT(sSightingDistances) - 1);
     Vec3f pos;
     s32 d;
     s32 i;
 
-    for (d = 0; d < ARRAY_COUNT(sAppearDistances); d++) {
-        for (i = 0; i < EN_BEN_APPEAR_DIRECTIONS; i++) {
-            // 0, +1, -1, +2, -2, ... steps of 1/16 turn away from "toward the camera"
-            s16 step = (i + 1) / 2;
-            s16 yaw = towardCameraYaw + (((i % 2) != 0) ? step : -step) * (0x10000 / EN_BEN_APPEAR_DIRECTIONS);
+    for (d = 0; d < ARRAY_COUNT(sDistanceScales); d++) {
+        f32 dist = sSightingDistances[sighting] * sDistanceScales[d];
 
-            if (EnBen_FindSpot(play, player, yaw, sAppearDistances[d], &pos) && !EnBen_IsBodySeen(play, &pos)) {
-                this->actor.world.pos = pos;
-                this->actor.prevPos = pos;
-                this->actor.velocity.y = 0.0f;
-                this->actor.shape.rot.y = Math_Vec3f_Yaw(&pos, &player->actor.world.pos);
-                this->actor.world.rot.y = this->actor.shape.rot.y;
+        for (i = 0; i < EN_BEN_SPOT_DIRECTIONS; i++) {
+            // 0, +1, -1, +2, -2, ... steps of 1/16 turn away from "behind you"
+            s16 step = (i + 1) / 2;
+            s16 yaw = behindYaw + (((i % 2) != 0) ? step : -step) * (0x10000 / EN_BEN_SPOT_DIRECTIONS);
+
+            if (EnBen_FindSpot(play, player, yaw, dist, &pos) && !EnBen_IsBodyVisible(play, &pos)) {
+                EnBen_PlaceAt(this, play, &pos);
                 return true;
             }
         }
@@ -190,22 +223,18 @@ s32 EnBen_TryAppearOutOfView(EnBen* this, PlayState* play) {
 }
 
 /**
- * Demo teaser: stand in plain view in front of the player, facing them. Tries a little nearer or further if the
+ * After the Song of Time: stand in plain view in front of the player. Tries a little nearer or further if the
  * exact spot has no floor. Returns false if nothing in front of the player works right now.
  */
-s32 EnBen_TryAppearInFront(EnBen* this, PlayState* play) {
-    static f32 sDistScales[] = { 1.0f, 0.75f, 1.4f };
+s32 EnBen_TryPlaceInFront(EnBen* this, PlayState* play) {
+    static f32 sScales[] = { 1.0f, 0.75f, 1.4f };
     Player* player = GET_PLAYER(play);
     Vec3f pos;
     s32 i;
 
-    for (i = 0; i < ARRAY_COUNT(sDistScales); i++) {
-        if (EnBen_FindSpot(play, player, player->actor.shape.rot.y, EN_BEN_CONFRONT_DIST * sDistScales[i], &pos)) {
-            this->actor.world.pos = pos;
-            this->actor.prevPos = pos;
-            this->actor.velocity.y = 0.0f;
-            this->actor.shape.rot.y = Math_Vec3f_Yaw(&pos, &player->actor.world.pos);
-            this->actor.world.rot.y = this->actor.shape.rot.y;
+    for (i = 0; i < ARRAY_COUNT(sScales); i++) {
+        if (EnBen_FindSpot(play, player, player->actor.shape.rot.y, EN_BEN_CONFRONT_DIST * sScales[i], &pos)) {
+            EnBen_PlaceAt(this, play, &pos);
             return true;
         }
     }
@@ -213,7 +242,7 @@ s32 EnBen_TryAppearInFront(EnBen* this, PlayState* play) {
 }
 
 /**
- * Demo teaser: nobody else is in South Clock Town. Runs every frame, since people can spawn after the statue does.
+ * Nobody else is here. Runs every frame, since people can spawn after the statue does.
  */
 void EnBen_EmptyTown(PlayState* play) {
     Actor* actor = play->actorCtx.actorLists[ACTORCAT_NPC].first;
@@ -226,10 +255,15 @@ void EnBen_EmptyTown(PlayState* play) {
     }
 }
 
-void EnBen_Hide(EnBen* this, s16 delay) {
+/**
+ * Go away for a while. The wait gets shorter the more often you've seen it.
+ */
+void EnBen_Vanish(EnBen* this) {
+    s32 wait = EN_BEN_LURK_LONGEST - (Ben_GetSightings() * EN_BEN_LURK_SHRINK);
+
     this->isHidden = true;
-    this->appearDelay = delay;
-    this->actionFunc = EnBen_WaitToAppear;
+    this->timer = CLAMP_MIN(wait, EN_BEN_LURK_MIN) + (s32)Rand_ZeroFloat(EN_BEN_LURK_RANGE);
+    this->actionFunc = EnBen_Lurk;
 }
 
 void EnBen_Init(Actor* thisx, PlayState* play) {
@@ -237,28 +271,24 @@ void EnBen_Init(Actor* thisx, PlayState* play) {
 
     Actor_ProcessInitChain(&this->actor, sInitChain);
     Collider_InitAndSetCylinder(play, &this->collider, &this->actor, &sCylinderInit);
-    this->actor.textId = BEN_TEXT_TERRIBLE_FATE;
+    this->actor.textId = BEN_TEXT_SHOULDNT_HAVE;
     this->actor.gravity = -1.0f;
-    this->hasSpoken = false;
     this->musicCooldown = 0;
     this->musicWarped = false;
-    this->isConfronting = false;
+    this->isConfronting = BEN_DEMO_TEASER && Ben_HasRewound() && !Ben_HasWarned();
 
-    if (BEN_DEMO_TEASER && Ben_HasRewound()) {
-        if (!Ben_HasWarned()) {
-            this->isConfronting = true;
-            this->actor.textId = BEN_TEXT_SHOULDNT_HAVE;
-        } else {
-            this->hasSpoken = true; // it has said everything it needs to
-        }
+    // Spawned during Play_Init, before the scene's music starts. Until you've seen it, there is no music at all.
+    play->sceneSequences.seqId = (Ben_GetSightings() > 0) ? NA_BGM_SONG_OF_HEALING : NA_BGM_NO_MUSIC;
+
+    // The camera isn't set up yet during Play_Init, so nothing is placed until updates start.
+    this->isHidden = true;
+    if (this->isConfronting) {
+        this->timer = EN_BEN_CONFRONT_DELAY;
+        this->actionFunc = EnBen_Confront;
+    } else {
+        this->timer = EN_BEN_FIRST_LURK_MIN + (s32)Rand_ZeroFloat(EN_BEN_FIRST_LURK_RANGE);
+        this->actionFunc = EnBen_Lurk;
     }
-
-    // Spawned during Play_Init, before the scene's music starts: make the Song of Healing the scene's music so the
-    // game's own music system starts it. The watchdog in EnBen_UpdateMusic covers the cases where it doesn't.
-    play->sceneSequences.seqId = NA_BGM_SONG_OF_HEALING;
-
-    // The camera isn't set up yet during Play_Init, so pick the spot once updates start.
-    EnBen_Hide(this, this->isConfronting ? EN_BEN_CONFRONT_DELAY : 0);
 }
 
 void EnBen_Destroy(Actor* thisx, PlayState* play) {
@@ -274,14 +304,25 @@ void EnBen_Destroy(Actor* thisx, PlayState* play) {
 }
 
 /**
- * Keep the Song of Healing playing, slowed and pitched down, whatever else tries to start music.
+ * Silence until the first sighting. After it, the Song of Healing, slowed and pitched down (more so after the Song
+ * of Time), whatever else tries to start music.
  */
 void EnBen_UpdateMusic(EnBen* this, PlayState* play) {
+    u16 activeSeqId = AudioSeq_GetActiveSeqId(SEQ_PLAYER_BGM_MAIN);
+
     if (this->musicCooldown > 0) {
         this->musicCooldown--;
     }
 
-    if (AudioSeq_GetActiveSeqId(SEQ_PLAYER_BGM_MAIN) != NA_BGM_SONG_OF_HEALING) {
+    if (Ben_GetSightings() == 0) {
+        if ((activeSeqId != NA_BGM_DISABLED) && (this->musicCooldown == 0)) {
+            SEQCMD_STOP_SEQUENCE(SEQ_PLAYER_BGM_MAIN, 20);
+            this->musicCooldown = EN_BEN_MUSIC_RETRY_FRAMES;
+        }
+        return;
+    }
+
+    if (activeSeqId != NA_BGM_SONG_OF_HEALING) {
         this->musicWarped = false;
         if (this->musicCooldown == 0) {
             SEQCMD_PLAY_SEQUENCE(SEQ_PLAYER_BGM_MAIN, 0, NA_BGM_SONG_OF_HEALING);
@@ -299,64 +340,98 @@ void EnBen_UpdateMusic(EnBen* this, PlayState* play) {
     }
 }
 
-void EnBen_WaitToAppear(EnBen* this, PlayState* play) {
-    if (this->appearDelay > 0) {
-        this->appearDelay--;
+/**
+ * Hidden. Wait, then appear somewhere you aren't looking.
+ */
+void EnBen_Lurk(EnBen* this, PlayState* play) {
+    if (this->timer > 0) {
+        this->timer--;
         return;
     }
-    if (this->isConfronting) {
-        if (EnBen_TryAppearInFront(this, play)) {
-            this->isHidden = false;
-            this->actionFunc = EnBen_Speak;
+    if (EnBen_TryPlaceSighting(this, play)) {
+        this->isHidden = false;
+        this->isNoticed = false;
+        this->seenFrames = 0;
+        this->unseenFrames = 0;
+        this->timer = EN_BEN_PATIENCE;
+        this->actionFunc = EnBen_Stand;
+    } else {
+        this->timer = EN_BEN_RETRY_FRAMES;
+    }
+}
+
+/**
+ * Standing still somewhere, facing you. Once you've seen it, it's gone the moment you look away.
+ */
+void EnBen_Stand(EnBen* this, PlayState* play) {
+    s32 visible = EnBen_IsBodyVisible(play, &this->actor.world.pos);
+
+    if (!this->isNoticed) {
+        if (visible) {
+            this->seenFrames++;
+            if (this->seenFrames >= EN_BEN_NOTICE_FRAMES) {
+                this->isNoticed = true;
+                Ben_AddSighting();
+                if (Ben_GetSightings() == 1) {
+                    play->sceneSequences.seqId = NA_BGM_SONG_OF_HEALING; // the music wakes up
+                }
+            }
         } else {
-            this->appearDelay = EN_BEN_APPEAR_RETRY_FRAMES;
+            this->seenFrames = 0;
+            this->timer--;
+            if (this->timer <= 0) {
+                // You never turned around. Try somewhere else later; this one doesn't count.
+                EnBen_Vanish(this);
+            }
         }
         return;
     }
-    if (EnBen_TryAppearOutOfView(this, play)) {
-        this->isHidden = false;
-        this->actionFunc = EnBen_Creep;
+
+    if (!visible) {
+        this->unseenFrames++;
     } else {
-        this->appearDelay = EN_BEN_APPEAR_RETRY_FRAMES;
+        this->unseenFrames = 0;
+    }
+
+    if ((this->unseenFrames >= EN_BEN_GONE_FRAMES) || (this->actor.xzDistToPlayer < EN_BEN_TOO_CLOSE)) {
+        if ((Ben_GetSightings() % EN_BEN_LAUGH_EVERY) == 0) {
+            Audio_PlaySfx(NA_SE_VO_OMVO00); // the Happy Mask Salesman, somewhere
+        }
+        EnBen_Vanish(this);
     }
 }
 
-void EnBen_Creep(EnBen* this, PlayState* play) {
-    Player* player = GET_PLAYER(play);
-    f32 speed = (BEN_DEMO_TEASER && Ben_HasRewound()) ? EN_BEN_CREEP_SPEED_REWOUND : EN_BEN_CREEP_SPEED;
-
-    if (!this->hasSpoken && (this->actor.xzDistToPlayer < EN_BEN_SPEAK_RANGE)) {
-        this->actionFunc = EnBen_Speak;
+/**
+ * After the Song of Time, once per rewind: it breaks its rule and stands right in front of you, and speaks.
+ */
+void EnBen_Confront(EnBen* this, PlayState* play) {
+    if (this->isHidden) {
+        if (this->timer > 0) {
+            this->timer--;
+            return;
+        }
+        if (EnBen_TryPlaceInFront(this, play)) {
+            this->isHidden = false;
+        } else {
+            this->timer = EN_BEN_RETRY_FRAMES;
+        }
         return;
     }
 
-    // The rule: it never moves while you can see it.
-    if (!EnBen_IsBodySeen(play, &this->actor.world.pos) && (this->actor.xzDistToPlayer > (EN_BEN_SPEAK_RANGE * 0.5f))) {
-        Math_Vec3f_StepToXZ(&this->actor.world.pos, &player->actor.world.pos, speed);
-        this->actor.shape.rot.y = Math_Vec3f_Yaw(&this->actor.world.pos, &player->actor.world.pos);
-        this->actor.world.rot.y = this->actor.shape.rot.y;
-    }
-}
-
-void EnBen_Speak(EnBen* this, PlayState* play) {
     if (Actor_TalkOfferAccepted(&this->actor, &play->state)) {
         this->actionFunc = EnBen_Speaking;
     } else {
         this->actor.flags |= ACTOR_FLAG_TALK_OFFER_AUTO_ACCEPTED;
-        Actor_OfferTalk(&this->actor, play, EN_BEN_SPEAK_RANGE * 2.0f);
+        Actor_OfferTalk(&this->actor, play, EN_BEN_CONFRONT_RANGE);
     }
 }
 
 void EnBen_Speaking(EnBen* this, PlayState* play) {
     if (Actor_TextboxIsClosing(&this->actor, play)) {
         this->actor.flags &= ~ACTOR_FLAG_TALK_OFFER_AUTO_ACCEPTED;
-        this->hasSpoken = true;
-        if (this->isConfronting) {
-            this->isConfronting = false;
-            Ben_SetWarned();
-        }
-        // Vanish, then come back somewhere you aren't looking.
-        EnBen_Hide(this, EN_BEN_VANISH_FRAMES);
+        this->isConfronting = false;
+        Ben_SetWarned();
+        EnBen_Vanish(this);
     }
 }
 
@@ -364,10 +439,7 @@ void EnBen_Update(Actor* thisx, PlayState* play) {
     EnBen* this = (EnBen*)thisx;
 
     EnBen_UpdateMusic(this, play);
-
-    if (BEN_DEMO_TEASER) {
-        EnBen_EmptyTown(play);
-    }
+    EnBen_EmptyTown(play);
 
     this->actionFunc(this, play);
 
