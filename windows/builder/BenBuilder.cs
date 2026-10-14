@@ -48,13 +48,14 @@ namespace BenDrowned
         }
     }
 
-    // The top of the window: BEN's face and the title. Every so often they glitch for a moment, like a cartridge that
-    // isn't quite right, and they glitch hard when Build is pressed.
+    // The top of the window: BEN's face torn into strips and the title split red and cyan, like a cartridge that isn't
+    // quite right. Every so often the tear shifts for a moment, and it goes wild when Build is pressed.
     sealed class Header : Control
     {
         readonly Image face;
         readonly Random random = new Random();
         readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer();
+        const int RestSeed = 12345; // the tear the header shows when nothing is happening
         int glitchFrames;
         int glitchSeed;
 
@@ -102,13 +103,13 @@ namespace BenDrowned
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
             bool glitching = glitchFrames > 0;
-            var r = new Random(glitchSeed);
+            var r = new Random(glitching ? glitchSeed : RestSeed);
 
             g.Clear(Color.Black);
 
             var faceArea = new Rectangle(16, 8, Height - 16, Height - 16);
             if (face != null) {
-                DrawFace(g, faceArea, glitching, r);
+                DrawFace(g, faceArea, r);
             }
 
             int left = faceArea.Right + 18;
@@ -126,16 +127,14 @@ namespace BenDrowned
                         }
                     }
                 }
-                if (glitching) {
-                    // Split the title into red and cyan, like a bad signal.
-                    float split = 2 + r.Next(5);
-                    using (var cyan = new SolidBrush(Color.FromArgb(150, 40, 220, 220)))
-                    using (var red = new SolidBrush(Color.FromArgb(170, 255, 30, 40))) {
-                        g.DrawString(title, titleFont, cyan, at.X - split, at.Y + r.Next(-2, 3));
-                        g.DrawString(title, titleFont, red, at.X + split, at.Y + r.Next(-2, 3));
-                    }
+                // Split the title into red and cyan, like a bad signal.
+                float split = 2 + r.Next(5);
+                using (var cyan = new SolidBrush(Color.FromArgb(150, 40, 220, 220)))
+                using (var red = new SolidBrush(Color.FromArgb(170, 255, 30, 40))) {
+                    g.DrawString(title, titleFont, cyan, at.X - split, at.Y + r.Next(-2, 3));
+                    g.DrawString(title, titleFont, red, at.X + split, at.Y + r.Next(-2, 3));
                 }
-                using (var ink = new SolidBrush(glitching ? BuilderForm.ColText : BuilderForm.ColAccentHot)) {
+                using (var ink = new SolidBrush(BuilderForm.ColText)) {
                     g.DrawString(title, titleFont, ink, at);
                 }
 
@@ -158,25 +157,21 @@ namespace BenDrowned
             }
         }
 
-        void DrawFace(Graphics g, Rectangle area, bool glitching, Random r)
+        void DrawFace(Graphics g, Rectangle area, Random r)
         {
-            if (!glitching) {
-                g.DrawImage(face, area);
-            } else {
-                // Tear the picture into strips and shove some sideways.
-                const int strips = 10;
-                for (int i = 0; i < strips; i++) {
-                    int sy = face.Height * i / strips;
-                    int sh = face.Height * (i + 1) / strips - sy;
-                    int dy = area.Y + area.Height * i / strips;
-                    int dh = area.Y + area.Height * (i + 1) / strips - dy;
-                    int shove = r.Next(3) == 0 ? r.Next(-14, 15) : 0;
-                    g.DrawImage(face, new Rectangle(area.X + shove, dy, area.Width, dh),
-                                new Rectangle(0, sy, face.Width, sh), GraphicsUnit.Pixel);
-                }
-                using (var wash = new SolidBrush(Color.FromArgb(45, BuilderForm.ColAccent))) {
-                    g.FillRectangle(wash, area);
-                }
+            // Tear the picture into strips and shove some sideways.
+            const int strips = 10;
+            for (int i = 0; i < strips; i++) {
+                int sy = face.Height * i / strips;
+                int sh = face.Height * (i + 1) / strips - sy;
+                int dy = area.Y + area.Height * i / strips;
+                int dh = area.Y + area.Height * (i + 1) / strips - dy;
+                int shove = r.Next(3) == 0 ? r.Next(-14, 15) : 0;
+                g.DrawImage(face, new Rectangle(area.X + shove, dy, area.Width, dh), new Rectangle(0, sy, face.Width, sh),
+                            GraphicsUnit.Pixel);
+            }
+            using (var wash = new SolidBrush(Color.FromArgb(45, BuilderForm.ColAccent))) {
+                g.FillRectangle(wash, area);
             }
 
             // Let the edges of the picture sink into the dark.
