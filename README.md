@@ -68,8 +68,7 @@ The original decomp README (manual `make` instructions) is kept at [`docs/DECOMP
 
 ## Legal / credits
 
-- **No Nintendo assets are in this repository, and none will ever be.** Building it requires
-  your own legally obtained `mm-n64-us` ROM. We release only a patch.
+- Building the hack requires your own legally obtained `mm-n64-us` ROM. We release only a patch.
 - BEN Drowned and its characters were created by **Alex Hall (Jadusable)**. This is a
   free, non-commercial fan tribute. Full credit goes to the original work, and we'll
   respect any request from its creator.

@@ -10,7 +10,8 @@
 //
 // Built by .github/workflows/builder.yml (csc on Windows); it also compiles with Mono's mcs for a quick check:
 //   cd windows/builder && mcs -target:winexe -r:System.Windows.Forms.dll -r:System.Drawing.dll -win32icon:ben.ico \
-//     -resource:ben.ico,BenDrowned.ben.ico -resource:ben.png,BenDrowned.ben.png -out:BEN-Builder.exe *.cs
+//     -resource:ben.ico,BenDrowned.ben.ico -resource:ben.png,BenDrowned.ben.png \
+//     -resource:laugh.wav,BenDrowned.laugh.wav -out:BEN-Builder.exe *.cs
 
 using System;
 using System.Collections.Concurrent;
@@ -341,8 +342,7 @@ namespace BenDrowned
             }
             Log("Ready. Drag your ROM in, then press Build.");
 
-            // Make the laugh now so pressing Build plays it straight away.
-            ThreadPool.QueueUserWorkItem(delegate { Laugh.Wav(); });
+
         }
 
         static Stream Resource(string name)

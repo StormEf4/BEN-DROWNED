@@ -33,6 +33,7 @@ jobs:
           & $csc /nologo /target:winexe /optimize+ /out:BEN-Builder.exe `
             /reference:System.Windows.Forms.dll /reference:System.Drawing.dll `
             "/win32icon:$src\ben.ico" "/resource:$src\ben.ico,BenDrowned.ben.ico" "/resource:$src\ben.png,BenDrowned.ben.png" `
+            "/resource:$src\laugh.wav,BenDrowned.laugh.wav" `
             $src\BenBuilder.cs $src\Laugh.cs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

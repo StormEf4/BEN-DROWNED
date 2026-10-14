@@ -24,9 +24,9 @@ Options are remembered between runs. ROM options (like **Skip the intro**) are p
 `./ben config OPT_<NAME> 0|1`, which becomes `BEN_<NAME>` in `include/ben/ben.h`. To add a new one, add a
 `#ifndef`-guarded switch there and one line to `Options` in `windows/builder/BenBuilder.cs`.
 
-When you press Build, the Happy Mask Salesman laughs (untick the option to turn it off). No game audio ships with
-the project, so the laugh is synthesized in `windows/builder/Laugh.cs`. To hear a different one, such as a clip you
-recorded from your own copy of the game, save it as `laugh.wav` next to BEN-Builder.exe or in `%APPDATA%\BEN-DROWNED`.
+When you press Build, the Happy Mask Salesman laughs (untick the option to turn it off). The clip is
+`windows/builder/laugh.wav`, embedded in the exe. To hear a different one, save it as `laugh.wav` next to
+BEN-Builder.exe or in `%APPDATA%\BEN-DROWNED`.
 
 ## Windows 10 / 11: PowerShell
 

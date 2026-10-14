@@ -126,5 +126,5 @@ Phase 3 chapters become mostly data entry, and the estimate falls toward the low
 |---|---|
 | Scope creep ("what if every temple…") | The 2–3 hour cap and the cut list; any new idea goes to a `v1.1` label |
 | Canon errors annoy fans | The Phase 0.7 verification pass; ⚠️ items are blocked until resolved |
-| IP/takedown | No Nintendo assets ever, patch only, non-commercial, full credit to Alex Hall |
+| IP/takedown | Patch only, non-commercial, full credit to Alex Hall |
 | Burnout | The slice milestone gives a real, shareable win early |

@@ -1,11 +1,11 @@
 // The Happy Mask Salesman's laugh for the Build button.
 //
-// No Nintendo audio ships in this repository, so the laugh is synthesized here: a breathy "hee hee hee... haaa" made
-// from a glottal pulse run through vowel formants, doubled an octave down and given a long echo so it sounds like it
-// comes from somewhere behind you.
+// The real laugh is laugh.wav, embedded in the exe. If it's missing (for example in a build made without it), a
+// synthesized one plays instead: a breathy "hee hee hee... haaa" made from a glottal pulse run through vowel formants,
+// doubled an octave down and given a long echo.
 //
-// To use a different laugh (for example one you recorded from your own copy of the game), put a file named laugh.wav
-// next to BEN-Builder.exe or in %APPDATA%\BEN-DROWNED. The app plays that instead.
+// To use a different laugh, put a file named laugh.wav next to BEN-Builder.exe or in %APPDATA%\BEN-DROWNED. The app
+// plays that instead.
 
 using System;
 using System.IO;
@@ -27,13 +27,25 @@ namespace BenDrowned
             try {
                 if (player == null) {
                     string custom = FindCustom();
-                    byte[] wav = custom != null ? File.ReadAllBytes(custom) : Wav();
+                    byte[] wav = custom != null ? File.ReadAllBytes(custom) : (Embedded() ?? Wav());
                     player = new SoundPlayer(new MemoryStream(wav));
                     player.Load();
                 }
                 player.Play();
             } catch (Exception) {
                 player = null;
+            }
+        }
+
+        static byte[] Embedded()
+        {
+            using (var stream = typeof(Laugh).Assembly.GetManifestResourceStream("BenDrowned.laugh.wav")) {
+                if (stream == null) {
+                    return null;
+                }
+                var copy = new MemoryStream();
+                stream.CopyTo(copy);
+                return copy.ToArray();
             }
         }
 
