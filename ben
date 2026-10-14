@@ -41,6 +41,12 @@ BREW_PACKAGES=(coreutils make python3 libpng bash libxml2 libiconv)
 FLIPS_REPO="https://github.com/Alcaro/Flips"
 FLIPS_COMMIT="ff216a75df0987047a67d7923567dc4482ce07ac"
 
+# Build options: every OPT_<NAME>=<number> setting becomes -DBEN_<NAME>=<number> (see include/ben/ben.h).
+ben_defines() {
+    [ -f "$CONFIG_FILE" ] || return 0
+    sed -n 's/^OPT_\([A-Z0-9_]*\)=\(-\{0,1\}[0-9][0-9]*\)$/-DBEN_\1=\2/p' "$CONFIG_FILE" | sort -u | tr '\n' ' ' | sed 's/ $//'
+}
+
 # ----------------------------------------------------------------------------------------------------------------
 # Output helpers
 
@@ -355,6 +361,10 @@ publish_build() {
 }
 
 do_build() {
+    local defines
+    defines="$(ben_defines)"
+    [ -n "$defines" ] && MAKE_VARS+=("BEN_DEFINES=$defines")
+
     ensure_location
     ensure_deps
     ensure_rom ""
@@ -473,6 +483,20 @@ cmd_patch() {
     say "${C_GREEN}${C_BOLD}Done.${C_RESET} Players apply the .bps to their own Majora's Mask (USA) ROM with Flips or https://www.marcrobinson.me/BPS/"
 }
 
+# Install the system packages the build needs, without prompting. The Windows builder app runs this as root.
+cmd_packages() {
+    is_debian_like || { say "Not a Debian/Ubuntu system; nothing to do."; return 0; }
+    local missing sudo=""
+    missing="$(missing_apt_packages)"
+    [ -z "$missing" ] && { ok "system packages installed"; return 0; }
+    [ "$(id -u)" != 0 ] && sudo="sudo"
+    say "  Installing: $missing"
+    $sudo apt-get update -q
+    # shellcheck disable=SC2086
+    $sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -q $missing
+    ok "system packages installed"
+}
+
 cmd_doctor() {
     local problems=0
     say "${C_BOLD}BEN DROWNED doctor${C_RESET}  ($(build_version), $(uname -sm))"
@@ -536,6 +560,7 @@ cmd_config() {
         [ -f "$CONFIG_FILE" ] && cat "$CONFIG_FILE" || say "(no settings yet)"
         say ""
         say "Settings: EMULATOR=<path to ares>   WINDOWS_COPY=0|1 (copy builds to your Windows user folder, default 1)"
+        say "          OPT_<NAME>=<number> (build option, becomes BEN_<NAME> in include/ben/ben.h, e.g. OPT_SKIP_INTRO 0)"
         return 0
     fi
     [ $# -eq 2 ] || die "usage: ./ben config KEY VALUE"
@@ -558,6 +583,7 @@ main() {
         run)    cmd_run ;;
         patch)  cmd_patch ;;
         doctor) cmd_doctor ;;
+        packages) cmd_packages ;;
         clean)  cmd_clean ;;
         reset)  cmd_reset ;;
         config) cmd_config "$@" ;;

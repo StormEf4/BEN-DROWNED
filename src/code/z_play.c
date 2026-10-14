@@ -2325,7 +2325,11 @@ void Play_Init(GameState* thisx) {
     // BEN: the statue haunts all of Clock Town and the Laundry Pool
     if (Ben_IsHauntedScene(this->sceneId)) {
         Actor_Spawn(&this->actorCtx, this, ACTOR_EN_BEN, player->actor.world.pos.x, player->actor.world.pos.y,
-                    player->actor.world.pos.z, 0, 0, 0, 0);
+                    player->actor.world.pos.z, 0, 0, 0, BEN_ACTOR_STATUE);
+    } else if ((this->sceneId == SCENE_LAST_BS) && (Ben_GetDayFour() == BEN_DAY_FOUR_LAIR)) {
+        // BEN: the 4th day begins in Majora's lair
+        Actor_Spawn(&this->actorCtx, this, ACTOR_EN_BEN, player->actor.world.pos.x, player->actor.world.pos.y,
+                    player->actor.world.pos.z, 0, 0, 0, BEN_ACTOR_LAIR);
     }
 #endif
 

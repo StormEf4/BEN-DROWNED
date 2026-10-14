@@ -13,8 +13,36 @@ static char sBenName[8] = { 0x0B, 0x0E, 0x17, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E };
 static u8 sHasRewound = false;
 static u8 sHasWarned = false;
 static u8 sSightings = 0;
+static u8 sDayFour = BEN_DAY_FOUR_NOT_YET;
+
+s32 Ben_GetDayFour(void) {
+    return sDayFour;
+}
+
+void Ben_SetDayFour(s32 state) {
+    sDayFour = state;
+}
+
+s32 Ben_TryStartDayFour(PlayState* play) {
+    if (!BEN_DEMO_TEASER || (sDayFour != BEN_DAY_FOUR_NOT_YET)) {
+        return false;
+    }
+    sDayFour = BEN_DAY_FOUR_LAIR;
+
+    // No "you can't" message. The ocarina just closes and everything slowly goes black.
+    Message_CloseTextbox(play);
+    play->msgCtx.ocarinaMode = OCARINA_MODE_END;
+    gSaveContext.timerStates[TIMER_ID_MOON_CRASH] = TIMER_STATE_OFF;
+    play->nextEntrance = ENTRANCE(MAJORAS_LAIR, 0);
+    play->transitionTrigger = TRANS_TRIGGER_START;
+    play->transitionType = TRANS_TYPE_FADE_BLACK_SLOW;
+    return true;
+}
 
 s32 Ben_IsHauntedScene(s16 sceneId) {
+    if (sDayFour != BEN_DAY_FOUR_HAUNTED) {
+        return false; // until the 4th day, Clock Town is just Clock Town
+    }
     switch (sceneId) {
         case SCENE_CLOCKTOWER: // South Clock Town
         case SCENE_TOWN:       // East Clock Town
@@ -39,6 +67,9 @@ void Ben_AddSighting(void) {
 }
 
 void Ben_OnSongOfTime(void) {
+    if (sDayFour != BEN_DAY_FOUR_HAUNTED) {
+        return; // an ordinary reset
+    }
     sHasRewound = true;
     sHasWarned = false;
 }
@@ -74,6 +105,7 @@ void Ben_ApplyIntroSkip(void) {
     sHasRewound = false;
     sHasWarned = false;
     sSightings = 0;
+    sDayFour = BEN_DAY_FOUR_NOT_YET;
 
     gSaveContext.save.isFirstCycle = true;
     gSaveContext.save.cutsceneIndex = 0; // no intro cutscene

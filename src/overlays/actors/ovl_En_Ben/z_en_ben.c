@@ -9,6 +9,9 @@
  *    moves while you can see it. Once you've looked at it and look away, it's gone.
  *  - Every sighting puts the next one a little closer, across districts (Ben_GetSightings).
  *  - The first sighting wakes the music: a slowed, pitched-down Song of Healing. Until then there is none.
+ *  - None of this starts until the 4th day: playing the Song of Double Time on the Night of the Final Day takes you to
+ *    Majora's lair instead (BEN_ACTOR_LAIR), where nothing is waiting, and then back to Clock Town with the clock
+ *    stopped.
  *  - It almost never speaks. The one line it has is after the Song of Time, when it breaks its rule and is standing
  *    right in front of you at dawn: "YOU SHOULDN'T HAVE DONE THAT."
  */
@@ -38,6 +41,9 @@
 #define EN_BEN_CONFRONT_DELAY 90    // frames to wait after arriving, so the day title has gone
 #define EN_BEN_CONFRONT_RANGE 220.0f
 
+#define EN_BEN_LAIR_FRAMES 200                 // how long you stand alone in Majora's lair before it all fades (10 s)
+#define EN_BEN_DAY_FOUR_TIME CLOCK_TIME(23, 0) // the clock stops here, an hour before the Clock Tower would open
+
 #define EN_BEN_REWOUND_TEMPO_SCALE 45
 #define EN_BEN_REWOUND_FREQ_SCALE 650
 
@@ -50,6 +56,7 @@ void EnBen_Lurk(EnBen* this, PlayState* play);
 void EnBen_Stand(EnBen* this, PlayState* play);
 void EnBen_Confront(EnBen* this, PlayState* play);
 void EnBen_Speaking(EnBen* this, PlayState* play);
+void EnBen_LairWait(EnBen* this, PlayState* play);
 
 ActorProfile En_Ben_Profile = {
     /**/ ACTOR_EN_BEN,
@@ -269,6 +276,15 @@ void EnBen_Vanish(EnBen* this) {
 void EnBen_Init(Actor* thisx, PlayState* play) {
     EnBen* this = (EnBen*)thisx;
 
+    if (this->actor.params == BEN_ACTOR_LAIR) {
+        // Nothing to see and nothing to hear. Just wait.
+        play->sceneSequences.seqId = NA_BGM_NO_MUSIC;
+        this->isHidden = true;
+        this->timer = EN_BEN_LAIR_FRAMES;
+        this->actionFunc = EnBen_LairWait;
+        return;
+    }
+
     Actor_ProcessInitChain(&this->actor, sInitChain);
     Collider_InitAndSetCylinder(play, &this->collider, &this->actor, &sCylinderInit);
     this->actor.textId = BEN_TEXT_SHOULDNT_HAVE;
@@ -294,7 +310,12 @@ void EnBen_Init(Actor* thisx, PlayState* play) {
 void EnBen_Destroy(Actor* thisx, PlayState* play) {
     EnBen* this = (EnBen*)thisx;
 
+    if (this->actor.params == BEN_ACTOR_LAIR) {
+        return;
+    }
+
     Collider_DestroyCylinder(play, &this->collider);
+    gSaveContext.save.timeSpeedOffset = 0; // outside Clock Town the clock runs again
 
     // Leaving the scene: undo the slowdown and make the next scene start its own music, even if it uses the same
     // sequence the game last requested before we took over (e.g. the Clock Town theme in the next district).
@@ -435,8 +456,59 @@ void EnBen_Speaking(EnBen* this, PlayState* play) {
     }
 }
 
+/**
+ * Kill everything in Majora's lair that would fight or talk, so the room is empty.
+ */
+void EnBen_EmptyLair(PlayState* play) {
+    static u8 sCategories[] = { ACTORCAT_BOSS, ACTORCAT_ENEMY, ACTORCAT_NPC };
+    s32 i;
+
+    for (i = 0; i < ARRAY_COUNT(sCategories); i++) {
+        Actor* actor = play->actorCtx.actorLists[sCategories[i]].first;
+
+        while (actor != NULL) {
+            Actor* next = actor->next;
+
+            Actor_Kill(actor);
+            actor = next;
+        }
+    }
+}
+
+/**
+ * The 4th day starts here: Majora's lair, empty and silent. Then black, then Clock Town with the clock stopped.
+ */
+void EnBen_LairWait(EnBen* this, PlayState* play) {
+    if (AudioSeq_GetActiveSeqId(SEQ_PLAYER_BGM_MAIN) != NA_BGM_DISABLED) {
+        SEQCMD_STOP_SEQUENCE(SEQ_PLAYER_BGM_MAIN, 0);
+    }
+
+    if (this->timer > 0) {
+        this->timer--;
+        return;
+    }
+    if (play->transitionTrigger != TRANS_TRIGGER_OFF) {
+        return;
+    }
+
+    Ben_SetDayFour(BEN_DAY_FOUR_HAUNTED);
+    gSaveContext.save.time = EN_BEN_DAY_FOUR_TIME;
+    play->nextEntrance = ENTRANCE(SOUTH_CLOCK_TOWN, 0);
+    play->transitionTrigger = TRANS_TRIGGER_START;
+    play->transitionType = TRANS_TYPE_FADE_BLACK_SLOW;
+}
+
 void EnBen_Update(Actor* thisx, PlayState* play) {
     EnBen* this = (EnBen*)thisx;
+
+    if (this->actor.params == BEN_ACTOR_LAIR) {
+        EnBen_EmptyLair(play);
+        this->actionFunc(this, play);
+        return;
+    }
+
+    // The clock doesn't move on the 4th day.
+    gSaveContext.save.timeSpeedOffset = -(s16)R_TIME_SPEED;
 
     EnBen_UpdateMusic(this, play);
     EnBen_EmptyTown(play);

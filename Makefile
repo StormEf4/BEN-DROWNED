@@ -248,6 +248,9 @@ else
   OPTFLAGS         := -O2 -g3
   MIPS_VERSION     := -mips2
 endif
+# BEN: build options from the builder app or `./ben config OPT_<NAME> <value>`, e.g. -DBEN_SKIP_INTRO=0
+BEN_DEFINES ?=
+C_DEFINES += $(BEN_DEFINES)
 ASOPTFLAGS := -O1
 
 # Use relocations and abi fpr names in the dump

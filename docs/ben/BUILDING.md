@@ -8,7 +8,23 @@ the same commands keep working for every future version of the project.
 
 ---
 
-## Windows 10 / 11 (recommended path)
+## Windows 10 / 11: the builder app (easiest)
+
+1. Download **[BEN-Builder.exe](https://github.com/StormEf4/BEN-DROWNED/releases/download/builder/BEN-Builder.exe)** and double-click it. Windows may warn that it's from an unknown
+   publisher, because the app isn't code-signed: click **More info**, then **Run anyway**.
+2. **Drag your ROM** onto the window (or click the box to choose it).
+3. Pick your **options**, then press **Build**. The first build takes about **10–30 minutes**; after that,
+   pressing Build again gets the newest version and rebuilds it.
+4. Press **Play** to open it in ares, or **Open folder** for `C:\Users\<you>\BEN-DROWNED`.
+
+If WSL and Ubuntu aren't installed, the app offers to install them (admin permission and a restart). After
+restarting, open **Ubuntu** from the Start menu once to pick a username and password, then press Build again.
+
+Options are remembered between runs. ROM options (like **Skip the intro**) are passed to the build as
+`./ben config OPT_<NAME> 0|1`, which becomes `BEN_<NAME>` in `include/ben/ben.h`. To add a new one, add a
+`#ifndef`-guarded switch there and one line to `Options` in `windows/builder/BenBuilder.cs`.
+
+## Windows 10 / 11: PowerShell
 
 Open **PowerShell** (Start menu → type "PowerShell") and paste:
 
