@@ -12,6 +12,7 @@
 #include "z64horse.h"
 #include "z64shrink_window.h"
 #include "z64save.h"
+#include "ben/ben.h" // BEN
 
 #include "assets/interface/parameter_static/parameter_static.h"
 
@@ -5914,7 +5915,7 @@ void Message_Update(PlayState* play) {
                                 Message_StartTextbox(play, sDoubleTimeSkipToNightTextIds[CURRENT_DAY - 1], NULL);
                             }
                             play->msgCtx.ocarinaMode = OCARINA_MODE_PROCESS_DOUBLE_TIME;
-                        } else {
+                        } else if (!Ben_TryStartDayFour(play)) { // BEN: trying for a 4th day works, once
                             Message_StartTextbox(play, 0x1B94, NULL);
                             play->msgCtx.ocarinaMode = OCARINA_MODE_END;
                         }

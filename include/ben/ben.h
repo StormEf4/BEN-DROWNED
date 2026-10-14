@@ -12,11 +12,15 @@
 #define BEN_NAME_OVERRIDE 1 // K2: NPC text says "BEN" whatever the file is named
 #define BEN_SPIKE_STATUE 1  // Phase 0.3: spawn the stalker statue in South Clock Town
 #define BEN_SKIP_INTRO 1    // Dev: new files skip the intro and start in South Clock Town (set to 0 to restore it)
-#define BEN_DEMO_TEASER 1   // Demo: empty South Clock Town, and the Song of Time makes the statue confront you
+#define BEN_DEMO_TEASER 1   // Demo: the "day four" session (empty Clock Town, the statue, the Song of Time line)
 
 /* Custom text IDs. Vanilla never reaches 0x4Dxx (credits start at 0x4E20). */
 #define BEN_TEXT_TERRIBLE_FATE 0x4D00
 #define BEN_TEXT_SHOULDNT_HAVE 0x4D01 // "YOU SHOULDN'T HAVE DONE THAT." after the Song of Time
+
+/* En_Ben params */
+#define BEN_ACTOR_STATUE 0 // the stalker statue
+#define BEN_ACTOR_LAIR 1   // invisible director for the 4th-day visit to Majora's lair
 
 /* Spike audio: Song of Healing slowed and pitched down (the runtime fallback for K7) */
 #define BEN_SPIKE_TEMPO_SCALE 60 // percent of normal tempo
@@ -24,6 +28,20 @@
 
 /* K2: name shown wherever text uses the player-name control code. Same 8-char encoding as playerName. */
 const char* Ben_GetPlayerName(void);
+
+/* "day four" (Session 2). Clock Town is normal until you try for a fourth day by playing the Song of Double Time
+ * on the Night of the Final Day. That takes you to Majora's lair, and from then on Clock Town is haunted. */
+typedef enum BenDayFour {
+    /* 0 */ BEN_DAY_FOUR_NOT_YET,
+    /* 1 */ BEN_DAY_FOUR_LAIR,   // on the way to, or in, Majora's lair
+    /* 2 */ BEN_DAY_FOUR_HAUNTED // back in an empty Clock Town with the clock stopped
+} BenDayFour;
+
+struct PlayState;
+s32 Ben_GetDayFour(void);
+void Ben_SetDayFour(s32 state);
+/* Called when the Song of Double Time is refused on the final night. Returns true if it started the 4th day. */
+s32 Ben_TryStartDayFour(struct PlayState* play);
 
 /* Cryptid stalker (En_Ben): which scenes it haunts, and how many times you've noticed it. The count survives scene
  * changes, so it keeps getting closer as you move between districts. */
