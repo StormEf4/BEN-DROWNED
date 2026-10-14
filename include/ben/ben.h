@@ -8,11 +8,20 @@
 
 #include "ultra64.h"
 
-/* Feature switches. Spike features are on so the Phase 0.3 build can be checked. */
+/* Feature switches. Each can be overridden per build with `./ben config OPT_<NAME> 0|1` (or the builder app), which
+ * passes -DBEN_<NAME>=<value> to the compiler. */
+#ifndef BEN_NAME_OVERRIDE
 #define BEN_NAME_OVERRIDE 1 // K2: NPC text says "BEN" whatever the file is named
-#define BEN_SPIKE_STATUE 1  // Phase 0.3: spawn the stalker statue in South Clock Town
-#define BEN_SKIP_INTRO 1    // Dev: new files skip the intro and start in South Clock Town (set to 0 to restore it)
-#define BEN_DEMO_TEASER 1   // Demo: the "day four" session (empty Clock Town, the statue, the Song of Time line)
+#endif
+#ifndef BEN_SPIKE_STATUE
+#define BEN_SPIKE_STATUE 1 // Phase 0.3: spawn the stalker statue in South Clock Town
+#endif
+#ifndef BEN_SKIP_INTRO
+#define BEN_SKIP_INTRO 1 // Dev: new files skip the intro and start in South Clock Town (set to 0 to restore it)
+#endif
+#ifndef BEN_DEMO_TEASER
+#define BEN_DEMO_TEASER 1 // Demo: the "day four" session (empty Clock Town, the statue, the Song of Time line)
+#endif
 
 /* Custom text IDs. Vanilla never reaches 0x4Dxx (credits start at 0x4E20). */
 #define BEN_TEXT_TERRIBLE_FATE 0x4D00

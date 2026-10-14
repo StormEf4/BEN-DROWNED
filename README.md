@@ -45,7 +45,10 @@ for its first real build. Run the checklist in [`docs/ben/SPIKE_TEST.md`](docs/b
 
 You need your own **Majora's Mask (USA, N64)** ROM. Everything else is automatic.
 
-**Windows 10/11:** paste this into PowerShell and follow the prompts:
+**Windows 10/11:** download **[BEN-Builder.exe](https://github.com/StormEf4/BEN-DROWNED/releases/download/builder/BEN-Builder.exe)**, double-click it, drag your ROM onto the window
+and press **Build**. (Windows may say it's from an unknown publisher: click **More info**, then **Run anyway**.)
+
+Prefer the command line? Paste this into PowerShell instead:
 
 ```powershell
 irm https://raw.githubusercontent.com/StormEf4/BEN-DROWNED/HEAD/windows/BEN-Setup.ps1 | iex

@@ -1,0 +1,54 @@
+name: Windows builder app
+
+# Compiles windows/builder/BenBuilder.cs into BEN-Builder.exe. On the default branch it also publishes the exe to the
+# "builder" release, so the download link in the README always gets the newest one:
+#   https://github.com/StormEf4/BEN-DROWNED/releases/download/builder/BEN-Builder.exe
+on:
+  push:
+    paths:
+      - "windows/builder/**"
+      - ".github/workflows/builder.yml"
+  pull_request:
+    paths:
+      - "windows/builder/**"
+      - ".github/workflows/builder.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build BEN-Builder.exe
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Compile
+        shell: pwsh
+        run: |
+          $csc = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+          & $csc /nologo /target:winexe /optimize+ /out:BEN-Builder.exe `
+            /reference:System.Windows.Forms.dll /reference:System.Drawing.dll windows\builder\BenBuilder.cs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BEN-Builder
+          path: BEN-Builder.exe
+
+      - name: Publish to the "builder" release
+        if: github.event_name != 'pull_request' && github.ref_name == github.event.repository.default_branch
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: builder
+          name: BEN DROWNED Builder (Windows)
+          body: |
+            Download **BEN-Builder.exe**, double-click it, drag in your own Majora's Mask (USA) ROM and press **Build**.
+
+            Windows may warn that the app is from an unknown publisher, because it isn't code-signed. Click
+            **More info**, then **Run anyway**.
+          files: BEN-Builder.exe
+          make_latest: true
