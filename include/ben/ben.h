@@ -25,6 +25,12 @@
 /* K2: name shown wherever text uses the player-name control code. Same 8-char encoding as playerName. */
 const char* Ben_GetPlayerName(void);
 
+/* Cryptid stalker (En_Ben): which scenes it haunts, and how many times you've noticed it. The count survives scene
+ * changes, so it keeps getting closer as you move between districts. */
+s32 Ben_IsHauntedScene(s16 sceneId);
+s32 Ben_GetSightings(void);
+void Ben_AddSighting(void);
+
 /* Demo teaser: the Song of Time was played this session. Survives the cycle reset (code-segment state). */
 void Ben_OnSongOfTime(void);
 s32 Ben_HasRewound(void);
