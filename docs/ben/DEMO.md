@@ -17,7 +17,7 @@ in `include/ben/ben.h`.
 5. Sooner or later you turn around and the Elegy statue is standing far off: at the end of a street, around a
    corner, behind you. It never moves while you watch it. Look away and it's gone.
 6. That first sighting wakes the music: a slow, low Song of Healing. Each sighting after it is a little closer, even
-   across districts. Every third time it vanishes, the Happy Mask Salesman's voice plays somewhere.
+   across districts. Every time it vanishes, the Happy Mask Salesman laughs somewhere.
 7. **Try to drown Link** to get away: wade into the Laundry Pool's water (or sink in it as a Deku scrub). After a
    moment it pulls you under, and you come back up at the edge. Soon the statue is **standing right behind you**.
 8. This time it doesn't go away when you look at it. **Link catches fire and dies.** When you're back, a box says
@@ -41,6 +41,9 @@ in `include/ben/ben.h`.
 | 10 | Song of Time → dawn as **human** Link in South Clock Town → the statue in front of you and the red line |
 
 Not in yet: the BEN save on the file select (Session 0).
+
+The laugh is the Salesman clip swapped in for the Great Fairy's laugh sample
+(`assets/audio/samples/SampleBank_0/great_fairy_laughter.wav`), so Great Fairies laugh like him too.
 
 If the Laundry Pool never pulls you under, its water may be shallower than the drowning check expects
 (`EN_BEN_DROWN_DEPTH` in `z_en_ben.c`).
