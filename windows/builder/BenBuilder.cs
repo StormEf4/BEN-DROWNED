@@ -9,14 +9,18 @@
 // BEN_<KEY> switch to ben.h and one line to `Options` below.
 //
 // Built by .github/workflows/builder.yml (csc on Windows); it also compiles with Mono's mcs for a quick check:
-//   mcs -target:winexe -r:System.Windows.Forms.dll -r:System.Drawing.dll -out:BEN-Builder.exe windows/builder/BenBuilder.cs
+//   cd windows/builder && mcs -target:winexe -r:System.Windows.Forms.dll -r:System.Drawing.dll -win32icon:ben.ico \
+//     -resource:ben.ico,BenDrowned.ben.ico -resource:ben.png,BenDrowned.ben.png -out:BEN-Builder.exe *.cs
 
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Drawing.Text;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -44,6 +48,210 @@ namespace BenDrowned
         }
     }
 
+    // The top of the window: BEN's face and the title. Every so often they glitch for a moment, like a cartridge that
+    // isn't quite right, and they glitch hard when Build is pressed.
+    sealed class Header : Control
+    {
+        readonly Image face;
+        readonly Random random = new Random();
+        readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer();
+        int glitchFrames;
+        int glitchSeed;
+
+        public Header(Image face)
+        {
+            this.face = face;
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint |
+                         ControlStyles.ResizeRedraw,
+                     true);
+            timer.Interval = 70;
+            timer.Tick += delegate { Tick(); };
+            timer.Start();
+        }
+
+        public void Shock()
+        {
+            glitchFrames = 18;
+            Invalidate();
+        }
+
+        void Tick()
+        {
+            if (glitchFrames > 0) {
+                glitchFrames--;
+            } else if (random.Next(120) == 0) {
+                glitchFrames = 2 + random.Next(4);
+            } else {
+                return;
+            }
+            glitchSeed = random.Next();
+            Invalidate();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) {
+                timer.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+            bool glitching = glitchFrames > 0;
+            var r = new Random(glitchSeed);
+
+            g.Clear(Color.Black);
+
+            var faceArea = new Rectangle(16, 8, Height - 16, Height - 16);
+            if (face != null) {
+                DrawFace(g, faceArea, glitching, r);
+            }
+
+            int left = faceArea.Right + 18;
+            using (var titleFont = new Font(BuilderForm.SerifFont, 30f, FontStyle.Bold))
+            using (var taglineFont = new Font(BuilderForm.SerifFont, 11.5f, FontStyle.Italic))
+            using (var bodyFont = new Font("Segoe UI", 9.75f)) {
+                const string title = "BEN DROWNED";
+                var at = new PointF(left, 22);
+
+                // A red glow behind the title.
+                using (var glow = new SolidBrush(Color.FromArgb(34, BuilderForm.ColAccentHot))) {
+                    for (int dx = -3; dx <= 3; dx += 2) {
+                        for (int dy = -3; dy <= 3; dy += 2) {
+                            g.DrawString(title, titleFont, glow, at.X + dx, at.Y + dy);
+                        }
+                    }
+                }
+                if (glitching) {
+                    // Split the title into red and cyan, like a bad signal.
+                    float split = 2 + r.Next(5);
+                    using (var cyan = new SolidBrush(Color.FromArgb(150, 40, 220, 220)))
+                    using (var red = new SolidBrush(Color.FromArgb(170, 255, 30, 40))) {
+                        g.DrawString(title, titleFont, cyan, at.X - split, at.Y + r.Next(-2, 3));
+                        g.DrawString(title, titleFont, red, at.X + split, at.Y + r.Next(-2, 3));
+                    }
+                }
+                using (var ink = new SolidBrush(glitching ? BuilderForm.ColText : BuilderForm.ColAccentHot)) {
+                    g.DrawString(title, titleFont, ink, at);
+                }
+
+                string tagline = glitching && r.Next(3) == 0 ? "You shouldn't have done that..."
+                                                             : "You've met with a terrible fate, haven't you?";
+                using (var gold = new SolidBrush(BuilderForm.ColGold)) {
+                    g.DrawString(tagline, taglineFont, gold, left + 3, 76);
+                }
+                using (var dim = new SolidBrush(BuilderForm.ColDim)) {
+                    g.DrawString("Builds the hack from your own Majora's Mask (USA) ROM.", bodyFont, dim, left + 3, 104);
+                }
+            }
+
+            // A thin purple line fading out to the right.
+            var line = new Rectangle(0, Height - 1, Width, 1);
+            using (var fade = new LinearGradientBrush(new Rectangle(0, 0, Math.Max(1, Width), 1), BuilderForm.ColPurple,
+                                                      Color.FromArgb(0, BuilderForm.ColPurple),
+                                                      LinearGradientMode.Horizontal)) {
+                g.FillRectangle(fade, line);
+            }
+        }
+
+        void DrawFace(Graphics g, Rectangle area, bool glitching, Random r)
+        {
+            if (!glitching) {
+                g.DrawImage(face, area);
+            } else {
+                // Tear the picture into strips and shove some sideways.
+                const int strips = 10;
+                for (int i = 0; i < strips; i++) {
+                    int sy = face.Height * i / strips;
+                    int sh = face.Height * (i + 1) / strips - sy;
+                    int dy = area.Y + area.Height * i / strips;
+                    int dh = area.Y + area.Height * (i + 1) / strips - dy;
+                    int shove = r.Next(3) == 0 ? r.Next(-14, 15) : 0;
+                    g.DrawImage(face, new Rectangle(area.X + shove, dy, area.Width, dh),
+                                new Rectangle(0, sy, face.Width, sh), GraphicsUnit.Pixel);
+                }
+                using (var wash = new SolidBrush(Color.FromArgb(45, BuilderForm.ColAccent))) {
+                    g.FillRectangle(wash, area);
+                }
+            }
+
+            // Let the edges of the picture sink into the dark.
+            var outer = area;
+            outer.Inflate(area.Width / 4, area.Height / 4);
+            using (var path = new GraphicsPath()) {
+                path.AddEllipse(outer);
+                using (var fade = new PathGradientBrush(path)) {
+                    fade.CenterColor = Color.FromArgb(0, 0, 0, 0);
+                    fade.SurroundColors = new[] { Color.Black };
+                    fade.FocusScales = new PointF(0.55f, 0.55f);
+                    g.FillRectangle(fade, area);
+                }
+            }
+        }
+    }
+
+    // A thin bar that sweeps blood red while work is running (the stock progress bar is Windows blue).
+    sealed class PulseBar : Control
+    {
+        readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer();
+        int position;
+        bool running;
+
+        public PulseBar()
+        {
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint,
+                     true);
+            timer.Interval = 30;
+            timer.Tick += delegate {
+                position += 7;
+                Invalidate();
+            };
+        }
+
+        public bool Running
+        {
+            get { return running; }
+            set {
+                running = value;
+                timer.Enabled = value;
+                Invalidate();
+            }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) {
+                timer.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            e.Graphics.Clear(BuilderForm.ColPanel);
+            if (!running || Width < 1) {
+                return;
+            }
+            int length = Math.Max(80, Width / 3);
+            int x = position % (Width + length) - length;
+            var sweep = new Rectangle(x, 0, length, Height);
+            using (var brush = new LinearGradientBrush(sweep, Color.Black, Color.Black, LinearGradientMode.Horizontal)) {
+                brush.InterpolationColors = new ColorBlend {
+                    Colors = new[] {
+                        Color.FromArgb(0, BuilderForm.ColAccent), BuilderForm.ColAccentHot,
+                        Color.FromArgb(0, BuilderForm.ColAccent),
+                    },
+                    Positions = new[] { 0f, 0.5f, 1f },
+                };
+                e.Graphics.FillRectangle(brush, sweep);
+            }
+        }
+    }
+
     sealed class BuilderForm : Form
     {
         const string RepoUrl = "https://github.com/StormEf4/BEN-DROWNED.git";
@@ -51,13 +259,20 @@ namespace BenDrowned
         const string RetailMd5 = "2a0a8acb61538235bc1094d297fb6556"; // Majora's Mask (USA), .z64
         const long RomSize = 32L * 1024 * 1024;
 
-        static readonly Color ColBack = Color.FromArgb(18, 18, 20);
-        static readonly Color ColPanel = Color.FromArgb(30, 30, 34);
-        static readonly Color ColText = Color.FromArgb(225, 225, 225);
-        static readonly Color ColDim = Color.FromArgb(150, 150, 155);
-        static readonly Color ColAccent = Color.FromArgb(170, 30, 30);
-        static readonly Color ColGood = Color.FromArgb(110, 190, 120);
-        static readonly Color ColBad = Color.FromArgb(230, 110, 100);
+        // Majora's Mask after dark: near-black with a purple cast, bone-white text, blood red and the mask's gold.
+        internal static readonly Color ColBack = Color.FromArgb(10, 7, 13);
+        internal static readonly Color ColPanel = Color.FromArgb(22, 15, 27);
+        internal static readonly Color ColPanelHot = Color.FromArgb(36, 22, 42);
+        internal static readonly Color ColText = Color.FromArgb(228, 216, 198);
+        internal static readonly Color ColDim = Color.FromArgb(146, 128, 152);
+        internal static readonly Color ColAccent = Color.FromArgb(150, 18, 26);
+        internal static readonly Color ColAccentHot = Color.FromArgb(200, 34, 42);
+        internal static readonly Color ColPurple = Color.FromArgb(96, 46, 122);
+        internal static readonly Color ColGold = Color.FromArgb(206, 160, 70);
+        internal static readonly Color ColGood = Color.FromArgb(130, 196, 122);
+        internal static readonly Color ColBad = Color.FromArgb(232, 100, 90);
+
+        internal const string SerifFont = "Palatino Linotype";
 
         readonly List<BuildOption> Options = new List<BuildOption>
         {
@@ -66,6 +281,7 @@ namespace BenDrowned
             new BuildOption("makePatch", null, "Also make a shareable patch (.bps)",
                             "For sending to friends. They apply it to their own ROM.", false),
             new BuildOption("openFolder", null, "Open the folder when it's done", null, true),
+            new BuildOption("laugh", null, "Let the Happy Mask Salesman laugh when you press Build", null, true),
         };
 
         readonly Dictionary<string, string> settings = new Dictionary<string, string>();
@@ -77,14 +293,16 @@ namespace BenDrowned
         readonly ConcurrentQueue<string> pendingLog = new ConcurrentQueue<string>();
         readonly System.Windows.Forms.Timer logTimer = new System.Windows.Forms.Timer();
 
+        Header header;
         Label dropLabel;
         Label romStatus;
         Panel dropPanel;
+        bool dropHot;
         Button buildButton;
         Button playButton;
         Button folderButton;
         Label statusLabel;
-        ProgressBar progress;
+        PulseBar progress;
         TextBox logBox;
 
         string romPath;
@@ -96,12 +314,24 @@ namespace BenDrowned
             BackColor = ColBack;
             ForeColor = ColText;
             Font = new Font("Segoe UI", 9.75f);
-            ClientSize = new Size(620, 720);
-            MinimumSize = new Size(560, 640);
+            ClientSize = new Size(620, 800);
+            MinimumSize = new Size(560, 760);
             StartPosition = FormStartPosition.CenterScreen;
+            DoubleBuffered = true;
+            SetStyle(ControlStyles.ResizeRedraw, true);
             AllowDrop = true;
             DragEnter += OnDragEnter;
             DragDrop += OnDragDrop;
+            DragLeave += delegate { SetDropHot(false); };
+
+            try {
+                var iconStream = Resource("ben.ico");
+                if (iconStream != null) {
+                    Icon = new Icon(iconStream);
+                }
+            } catch (Exception) {
+                // Without the icon the app still works.
+            }
 
             LoadSettings();
             BuildLayout();
@@ -115,6 +345,54 @@ namespace BenDrowned
                 SetRom(savedRom);
             }
             Log("Ready. Drag your ROM in, then press Build.");
+
+            // Make the laugh now so pressing Build plays it straight away.
+            ThreadPool.QueueUserWorkItem(delegate { Laugh.Wav(); });
+        }
+
+        static Stream Resource(string name)
+        {
+            return typeof(BuilderForm).Assembly.GetManifestResourceStream("BenDrowned." + name);
+        }
+
+        // Dark title bar on Windows 10 and 11 (and a near-black one on 11), so the window frame doesn't glow white.
+        [DllImport("dwmapi.dll")]
+        static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
+
+        // Dark scroll bars for the log.
+        [DllImport("uxtheme.dll", CharSet = CharSet.Unicode)]
+        static extern int SetWindowTheme(IntPtr window, string appName, string idList);
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            try {
+                int on = 1;
+                if (DwmSetWindowAttribute(Handle, 20, ref on, 4) != 0) {
+                    DwmSetWindowAttribute(Handle, 19, ref on, 4); // older Windows 10 builds
+                }
+                int caption = ColBack.R | (ColBack.G << 8) | (ColBack.B << 16);
+                DwmSetWindowAttribute(Handle, 35, ref caption, 4);
+                SetWindowTheme(logBox.Handle, "DarkMode_Explorer", null);
+            } catch (Exception) {
+                // Not Windows 10 or newer: keep the normal title bar.
+            }
+        }
+
+        // A faint purple glow in the middle that sinks into black at the edges.
+        protected override void OnPaintBackground(PaintEventArgs e)
+        {
+            e.Graphics.Clear(ColBack);
+            var area = ClientRectangle;
+            area.Inflate(area.Width / 3, area.Height / 4);
+            using (var path = new GraphicsPath()) {
+                path.AddEllipse(area);
+                using (var brush = new PathGradientBrush(path)) {
+                    brush.CenterColor = Color.FromArgb(40, ColPurple);
+                    brush.SurroundColors = new[] { Color.FromArgb(230, 0, 0, 0) };
+                    e.Graphics.FillRectangle(brush, ClientRectangle);
+                }
+            }
         }
 
         // ---------------------------------------------------------------------------------------------------------
@@ -122,74 +400,103 @@ namespace BenDrowned
 
         void BuildLayout()
         {
-            var title = new Label {
-                Text = "BEN DROWNED",
-                Font = new Font("Segoe UI", 22f, FontStyle.Bold),
-                ForeColor = ColAccent,
-                AutoSize = true,
-                Location = new Point(20, 14),
-            };
-            var subtitle = new Label {
-                Text = "Builds the hack from your own Majora's Mask (USA) ROM.",
-                ForeColor = ColDim,
-                AutoSize = false,
-                Location = new Point(22, 58),
-                Size = new Size(580, 20),
+            Image face = null;
+            try {
+                var faceStream = Resource("ben.png");
+                if (faceStream != null) {
+                    face = Image.FromStream(faceStream);
+                }
+            } catch (Exception) {
+                // The header just goes without the face.
+            }
+            header = new Header(face) {
+                Location = new Point(0, 0),
+                Size = new Size(ClientSize.Width, 156),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
             };
 
             dropPanel = new Panel {
-                Location = new Point(20, 88),
-                Size = new Size(580, 110),
+                Location = new Point(20, 168),
+                Size = new Size(580, 100),
                 BackColor = ColPanel,
                 Cursor = Cursors.Hand,
                 AllowDrop = true,
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
             };
             dropPanel.Paint += (s, e) => {
-                using (var pen = new Pen(ColDim, 1.5f) { DashStyle = System.Drawing.Drawing2D.DashStyle.Dash }) {
+                var color = dropHot ? ColAccentHot : ColPurple;
+                using (var pen = new Pen(color, 1.5f) { DashStyle = DashStyle.Dash }) {
                     e.Graphics.DrawRectangle(pen, 1, 1, dropPanel.Width - 3, dropPanel.Height - 3);
+                }
+                // Little corner brackets, like a cartridge slot.
+                using (var pen = new Pen(dropHot ? ColAccentHot : ColGold, 2f)) {
+                    int w = dropPanel.Width - 1, h = dropPanel.Height - 1, n = 12;
+                    e.Graphics.DrawLines(pen, new[] { new Point(0, n), new Point(0, 0), new Point(n, 0) });
+                    e.Graphics.DrawLines(pen, new[] { new Point(w - n, 0), new Point(w, 0), new Point(w, n) });
+                    e.Graphics.DrawLines(pen, new[] { new Point(0, h - n), new Point(0, h), new Point(n, h) });
+                    e.Graphics.DrawLines(pen, new[] { new Point(w - n, h), new Point(w, h), new Point(w, h - n) });
                 }
             };
             dropPanel.DragEnter += OnDragEnter;
+            dropPanel.DragLeave += delegate { SetDropHot(false); };
             dropPanel.DragDrop += OnDragDrop;
+            dropPanel.MouseEnter += delegate { SetDropHot(true); };
+            dropPanel.MouseLeave += delegate { SetDropHot(MouseOverDrop()); };
             dropPanel.Click += delegate { BrowseForRom(); };
 
             dropLabel = new Label {
                 Text = "Drag your ROM here\n(or click to choose it)",
                 TextAlign = ContentAlignment.MiddleCenter,
-                Font = new Font("Segoe UI", 12f),
+                Font = new Font(SerifFont, 13f),
                 Dock = DockStyle.Fill,
                 ForeColor = ColText,
+                BackColor = Color.Transparent,
             };
             dropLabel.Click += delegate { BrowseForRom(); };
+            dropLabel.MouseEnter += delegate { SetDropHot(true); };
+            dropLabel.MouseLeave += delegate { SetDropHot(MouseOverDrop()); };
             dropPanel.Controls.Add(dropLabel);
 
             romStatus = new Label {
                 Text = "It must be the USA Nintendo 64 version (.z64, .n64 or .v64).",
                 ForeColor = ColDim,
+                BackColor = Color.Transparent,
                 AutoSize = false,
-                Location = new Point(22, 202),
+                Location = new Point(22, 272),
                 Size = new Size(580, 20),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
             };
 
-            var optionsBox = new GroupBox {
-                Text = "Options",
-                ForeColor = ColText,
-                Location = new Point(20, 228),
-                Size = new Size(580, 40 + Options.Count * 46 + 24),
+            var optionsBox = new Panel {
+                BackColor = ColPanel,
+                Location = new Point(20, 298),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
             };
-            int y = 24;
+            optionsBox.Paint += (s, e) => {
+                using (var pen = new Pen(ColPurple)) {
+                    e.Graphics.DrawRectangle(pen, 0, 0, optionsBox.Width - 1, optionsBox.Height - 1);
+                }
+            };
+            optionsBox.Controls.Add(new Label {
+                Text = "OPTIONS",
+                ForeColor = ColGold,
+                Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+                AutoSize = true,
+                Location = new Point(12, 10),
+            });
+            int y = 34;
             foreach (var option in Options) {
                 option.Box = new CheckBox {
                     Text = option.Label,
                     Checked = GetBool(option.Key, option.Default),
                     ForeColor = ColText,
+                    FlatStyle = FlatStyle.Flat,
                     AutoSize = true,
                     Location = new Point(14, y),
                 };
+                option.Box.FlatAppearance.BorderColor = ColPurple;
+                option.Box.FlatAppearance.CheckedBackColor = ColAccent;
+                option.Box.FlatAppearance.MouseOverBackColor = ColPanelHot;
                 var opt = option;
                 option.Box.CheckedChanged += delegate {
                     settings[opt.Key] = opt.Box.Checked ? "1" : "0";
@@ -203,8 +510,10 @@ namespace BenDrowned
                         AutoSize = true,
                         Location = new Point(32, y + 22),
                     });
+                    y += 46;
+                } else {
+                    y += 28;
                 }
-                y += 46;
             }
             optionsBox.Controls.Add(new Label {
                 Text = "More options will show up here as the hack grows.",
@@ -213,10 +522,20 @@ namespace BenDrowned
                 AutoSize = true,
                 Location = new Point(14, y + 4),
             });
+            optionsBox.Size = new Size(580, y + 32);
 
-            int buttonsTop = optionsBox.Bottom + 12;
+            int buttonsTop = optionsBox.Bottom + 14;
             buildButton = MakeButton("Build", 20, buttonsTop, 200, true);
-            buildButton.Click += delegate { StartWork(false); };
+            buildButton.Click += delegate {
+                if (busy) {
+                    return;
+                }
+                if (Find("laugh").Box.Checked) {
+                    Laugh.Play();
+                }
+                header.Shock();
+                StartWork(false);
+            };
             playButton = MakeButton("Play", 230, buttonsTop, 120, false);
             playButton.Click += delegate { StartWork(true); };
             folderButton = MakeButton("Open folder", 360, buttonsTop, 140, false);
@@ -225,16 +544,15 @@ namespace BenDrowned
             statusLabel = new Label {
                 Text = "",
                 ForeColor = ColText,
+                BackColor = Color.Transparent,
                 AutoSize = false,
                 Location = new Point(20, buttonsTop + 52),
                 Size = new Size(580, 20),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
             };
-            progress = new ProgressBar {
+            progress = new PulseBar {
                 Location = new Point(20, buttonsTop + 76),
-                Size = new Size(580, 8),
-                Style = ProgressBarStyle.Marquee,
-                MarqueeAnimationSpeed = 0,
+                Size = new Size(580, 4),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
             };
             logBox = new TextBox {
@@ -246,15 +564,29 @@ namespace BenDrowned
                 ForeColor = ColDim,
                 BorderStyle = BorderStyle.None,
                 Font = new Font("Consolas", 9f),
-                Location = new Point(20, buttonsTop + 94),
-                Size = new Size(580, ClientSize.Height - (buttonsTop + 94) - 16),
+                Location = new Point(20, buttonsTop + 90),
+                Size = new Size(580, ClientSize.Height - (buttonsTop + 90) - 16),
                 Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
             };
 
             Controls.AddRange(new Control[] {
-                title, subtitle, dropPanel, romStatus, optionsBox, buildButton, playButton, folderButton, statusLabel,
-                progress, logBox,
+                header, dropPanel, romStatus, optionsBox, buildButton, playButton, folderButton, statusLabel, progress,
+                logBox,
             });
+        }
+
+        bool MouseOverDrop()
+        {
+            return dropPanel.ClientRectangle.Contains(dropPanel.PointToClient(MousePosition));
+        }
+
+        void SetDropHot(bool hot)
+        {
+            if (dropHot != hot) {
+                dropHot = hot;
+                dropPanel.BackColor = hot ? ColPanelHot : ColPanel;
+                dropPanel.Invalidate();
+            }
         }
 
         Button MakeButton(string text, int x, int y, int width, bool primary)
@@ -262,14 +594,16 @@ namespace BenDrowned
             var b = new Button {
                 Text = text,
                 Location = new Point(x, y),
-                Size = new Size(width, 40),
+                Size = new Size(width, 42),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = primary ? ColAccent : ColPanel,
-                ForeColor = Color.White,
-                Font = new Font("Segoe UI", primary ? 11f : 10f, primary ? FontStyle.Bold : FontStyle.Regular),
+                ForeColor = ColText,
+                Font = primary ? new Font(SerifFont, 13f, FontStyle.Bold) : new Font("Segoe UI", 10f),
                 Cursor = Cursors.Hand,
             };
-            b.FlatAppearance.BorderColor = primary ? ColAccent : ColDim;
+            b.FlatAppearance.BorderColor = primary ? ColAccentHot : ColPurple;
+            b.FlatAppearance.MouseOverBackColor = primary ? ColAccentHot : ColPanelHot;
+            b.FlatAppearance.MouseDownBackColor = primary ? Color.FromArgb(110, 10, 18) : ColBack;
             return b;
         }
 
@@ -279,10 +613,12 @@ namespace BenDrowned
         void OnDragEnter(object sender, DragEventArgs e)
         {
             e.Effect = (!busy && e.Data.GetDataPresent(DataFormats.FileDrop)) ? DragDropEffects.Copy : DragDropEffects.None;
+            SetDropHot(e.Effect != DragDropEffects.None);
         }
 
         void OnDragDrop(object sender, DragEventArgs e)
         {
+            SetDropHot(false);
             var files = e.Data.GetData(DataFormats.FileDrop) as string[];
             if (files != null && files.Length > 0) {
                 SetRom(files[0]);
@@ -354,7 +690,7 @@ namespace BenDrowned
                 BeginInvoke((Action)(() => {
                     SetBusy(false);
                     if (!ok) {
-                        Status("Stopped. See the messages below.", ColBad);
+                        Status("You've met with a terrible fate. The build stopped; see the messages below.", ColBad);
                     }
                 }));
             });
@@ -419,7 +755,7 @@ namespace BenDrowned
                 }
             }
 
-            Status("Done. Your ROM is BEN-DROWNED-latest.z64 in " + outputFolder, ColGood);
+            Status("Dawn of a new day. Your ROM is BEN-DROWNED-latest.z64 in " + outputFolder, ColGood);
             Log("");
             Log("Done. Press Play, or open BEN-DROWNED-latest.z64 from " + outputFolder + " in your emulator.");
             if (IsChecked(Find("openFolder"))) {
@@ -630,7 +966,7 @@ namespace BenDrowned
             busy = value;
             buildButton.Enabled = !value;
             playButton.Enabled = !value;
-            progress.MarqueeAnimationSpeed = value ? 30 : 0;
+            progress.Running = value;
             foreach (var option in Options) {
                 option.Box.Enabled = !value;
             }
