@@ -38,7 +38,9 @@
 #define EN_BEN_TOO_CLOSE 220.0f      // walk up to it and it isn't there any more
 #define EN_BEN_RETRY_FRAMES 8        // a failed spot search is retried this often, not every frame
 #define EN_BEN_MUSIC_RETRY_FRAMES 60 // how long to let a requested sequence load before requesting it again
-#define EN_BEN_LAUGH_EVERY 3         // the Salesman's laugh answers every third time it vanishes
+// The Happy Mask Salesman's laugh. The Great Fairy's laugh sample is swapped for his
+// (assets/audio/samples/SampleBank_0/great_fairy_laughter.wav), so this sound effect plays it.
+#define EN_BEN_LAUGH_SFX NA_SE_VO_FR_LAUGH_0
 
 #define EN_BEN_CONFRONT_DIST 120.0f // after the Song of Time: how far in front of you it stands
 #define EN_BEN_CONFRONT_DELAY 90    // frames to wait after arriving, so the day title has gone
@@ -451,9 +453,7 @@ void EnBen_Stand(EnBen* this, PlayState* play) {
     }
 
     if ((this->unseenFrames >= EN_BEN_GONE_FRAMES) || (this->actor.xzDistToPlayer < EN_BEN_TOO_CLOSE)) {
-        if ((Ben_GetSightings() % EN_BEN_LAUGH_EVERY) == 0) {
-            Audio_PlaySfx(NA_SE_VO_OMVO00); // the Happy Mask Salesman, somewhere
-        }
+        Audio_PlaySfx(EN_BEN_LAUGH_SFX); // the Happy Mask Salesman, somewhere, every time it's gone
         EnBen_Vanish(this);
     }
 }
@@ -509,6 +509,7 @@ void EnBen_Ignite(EnBen* this, PlayState* play) {
     }
     player->bodyIsBurning = true;
     Actor_PlaySfx(&player->actor, NA_SE_EV_FLAME_IGNITION);
+    Audio_PlaySfx(EN_BEN_LAUGH_SFX);
     Player_PlaySfx(player, NA_SE_VO_LI_FALL_L + player->ageProperties->voiceSfxIdOffset);
     Ben_SetFate(BEN_FATE_BURNING);
     this->actionFunc = EnBen_Burning;
