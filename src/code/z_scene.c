@@ -1,4 +1,5 @@
 #include "global.h"
+#include "ben/ben.h" // BEN
 
 /**
  * Spawn an object file of a specified ID that will persist through room changes.
@@ -179,6 +180,12 @@ void Scene_CommandSpawnList(PlayState* play, SceneCmd* cmd) {
     Object_SpawnPersistent(&play->objectCtx, playerObjectId);
 
     play->objectCtx.slots[play->objectCtx.numEntries].segment = objectPtr;
+
+    // BEN: on the 4th day, Skull Kid floats over the empty lair (STORY_BIBLE.md C5). The lair has no Skull Kid object
+    // of its own, so load it here, before the rooms' objects, the way the telescope loads it.
+    if ((play->sceneId == SCENE_LAST_BS) && (Ben_GetDayFour() == BEN_DAY_FOUR_LAIR)) {
+        Object_SpawnPersistent(&play->objectCtx, OBJECT_STK);
+    }
 }
 
 // SceneTableEntry Header Command 0x01: Actor List
