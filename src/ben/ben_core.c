@@ -51,6 +51,9 @@ void Ben_ApplyIntroSkip(void) {
 
     gSaveContext.save.isFirstCycle = true;
     gSaveContext.save.cutsceneIndex = 0; // no intro cutscene
+    // The intro's scripted return to Dawn of the First Day counts as the first reset. Without it, the player's
+    // first Song of Time replays that scripted return (the Deku Link cutscene into the Clock Tower).
+    gSaveContext.save.saveInfo.playerData.threeDayResetCount = 1;
     gSaveContext.save.playerForm = PLAYER_FORM_HUMAN;
     gSaveContext.save.hasTatl = true;
 
