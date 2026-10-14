@@ -10,8 +10,11 @@
  *  - Every sighting puts the next one a little closer, across districts (Ben_GetSightings).
  *  - The first sighting wakes the music: a slowed, pitched-down Song of Healing. Until then there is none.
  *  - None of this starts until the 4th day: playing the Song of Double Time on the Night of the Final Day takes you to
- *    Majora's lair instead (BEN_ACTOR_LAIR), where nothing is waiting, and then back to Clock Town with the clock
- *    stopped.
+ *    Majora's lair instead (BEN_ACTOR_LAIR), where only Skull Kid is waiting, floating in the air, and then back to
+ *    Clock Town with the clock stopped.
+ *  - Try to get away by drowning Link in the Laundry Pool and it pulls you under. When you come back up, the statue is
+ *    standing right behind you. Once you've seen it, it stays, and Link catches fire and dies. When you're back:
+ *    "You've met with a terrible fate, haven't you?" (STORY_BIBLE.md C9, C10).
  *  - It almost never speaks. The one line it has is after the Song of Time, when it breaks its rule and is standing
  *    right in front of you at dawn: "YOU SHOULDN'T HAVE DONE THAT."
  */
@@ -44,6 +47,17 @@
 #define EN_BEN_LAIR_FRAMES 200                 // how long you stand alone in Majora's lair before it all fades (10 s)
 #define EN_BEN_DAY_FOUR_TIME CLOCK_TIME(23, 0) // the clock stops here, an hour before the Clock Tower would open
 
+#define EN_BEN_SKULL_KID_DIST 260.0f   // in the lair: how far in front of you Skull Kid floats
+#define EN_BEN_SKULL_KID_HEIGHT 160.0f // and how high
+
+#define EN_BEN_DROWN_DEPTH 10.0f   // Laundry Pool water deeper than this counts as trying to drown
+#define EN_BEN_DROWN_FRAMES 40     // stay in it this long (2 s) and it pulls you under
+#define EN_BEN_DROWNED_DELAY 30    // after you come back up, how soon it's standing behind you
+#define EN_BEN_DROWNED_DIST 260.0f // and how close
+#define EN_BEN_IGNITE_DELAY 30     // after you see it then, how long before Link catches fire (1.5 s)
+#define EN_BEN_BURN_DRAIN_EVERY 2  // while burning, 1/16 of a heart goes every this many frames, on top of the flames
+#define EN_BEN_FATE_DELAY 50       // after the game over, how long before the line appears
+
 #define EN_BEN_REWOUND_TEMPO_SCALE 45
 #define EN_BEN_REWOUND_FREQ_SCALE 650
 
@@ -57,6 +71,10 @@ void EnBen_Stand(EnBen* this, PlayState* play);
 void EnBen_Confront(EnBen* this, PlayState* play);
 void EnBen_Speaking(EnBen* this, PlayState* play);
 void EnBen_LairWait(EnBen* this, PlayState* play);
+void EnBen_Ignite(EnBen* this, PlayState* play);
+void EnBen_Burning(EnBen* this, PlayState* play);
+void EnBen_FateLine(EnBen* this, PlayState* play);
+void EnBen_FateLineSpeaking(EnBen* this, PlayState* play);
 
 ActorProfile En_Ben_Profile = {
     /**/ ACTOR_EN_BEN,
@@ -213,7 +231,9 @@ s32 EnBen_TryPlaceSighting(EnBen* this, PlayState* play) {
     s32 i;
 
     for (d = 0; d < ARRAY_COUNT(sDistanceScales); d++) {
-        f32 dist = sSightingDistances[sighting] * sDistanceScales[d];
+        // Right after the Laundry Pool, it's close.
+        f32 dist = ((Ben_GetFate() == BEN_FATE_DROWNED) ? EN_BEN_DROWNED_DIST : sSightingDistances[sighting]) *
+                   sDistanceScales[d];
 
         for (i = 0; i < EN_BEN_SPOT_DIRECTIONS; i++) {
             // 0, +1, -1, +2, -2, ... steps of 1/16 turn away from "behind you"
@@ -277,9 +297,10 @@ void EnBen_Init(Actor* thisx, PlayState* play) {
     EnBen* this = (EnBen*)thisx;
 
     if (this->actor.params == BEN_ACTOR_LAIR) {
-        // Nothing to see and nothing to hear. Just wait.
+        // Nothing to hear. Just wait.
         play->sceneSequences.seqId = NA_BGM_NO_MUSIC;
         this->isHidden = true;
+        this->spawnedSkullKid = false;
         this->timer = EN_BEN_LAIR_FRAMES;
         this->actionFunc = EnBen_LairWait;
         return;
@@ -292,15 +313,25 @@ void EnBen_Init(Actor* thisx, PlayState* play) {
     this->musicCooldown = 0;
     this->musicWarped = false;
     this->isConfronting = BEN_DEMO_TEASER && Ben_HasRewound() && !Ben_HasWarned();
+    this->drownFrames = 0;
+    if (Ben_GetFate() == BEN_FATE_BURNING) {
+        Ben_SetFate(BEN_FATE_BURNED); // Link burned to death, and this is where you came back
+    }
 
     // Spawned during Play_Init, before the scene's music starts. Until you've seen it, there is no music at all.
     play->sceneSequences.seqId = (Ben_GetSightings() > 0) ? NA_BGM_SONG_OF_HEALING : NA_BGM_NO_MUSIC;
 
     // The camera isn't set up yet during Play_Init, so nothing is placed until updates start.
     this->isHidden = true;
-    if (this->isConfronting) {
+    if (Ben_GetFate() == BEN_FATE_BURNED) {
+        this->timer = EN_BEN_FATE_DELAY;
+        this->actionFunc = EnBen_FateLine;
+    } else if (this->isConfronting) {
         this->timer = EN_BEN_CONFRONT_DELAY;
         this->actionFunc = EnBen_Confront;
+    } else if (Ben_GetFate() == BEN_FATE_DROWNED) {
+        this->timer = EN_BEN_DROWNED_DELAY;
+        this->actionFunc = EnBen_Lurk;
     } else {
         this->timer = EN_BEN_FIRST_LURK_MIN + (s32)Rand_ZeroFloat(EN_BEN_FIRST_LURK_RANGE);
         this->actionFunc = EnBen_Lurk;
@@ -396,6 +427,11 @@ void EnBen_Stand(EnBen* this, PlayState* play) {
                 if (Ben_GetSightings() == 1) {
                     play->sceneSequences.seqId = NA_BGM_SONG_OF_HEALING; // the music wakes up
                 }
+                if (Ben_GetFate() == BEN_FATE_DROWNED) {
+                    // You couldn't get away. This time it doesn't go anywhere.
+                    this->timer = EN_BEN_IGNITE_DELAY;
+                    this->actionFunc = EnBen_Ignite;
+                }
             }
         } else {
             this->seenFrames = 0;
@@ -457,6 +493,91 @@ void EnBen_Speaking(EnBen* this, PlayState* play) {
 }
 
 /**
+ * After the Laundry Pool: you've seen it, and it stays where it is. Then Link catches fire.
+ */
+void EnBen_Ignite(EnBen* this, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+    s32 i;
+
+    if (this->timer > 0) {
+        this->timer--;
+        return;
+    }
+
+    for (i = 0; i < ARRAY_COUNT(player->bodyFlameTimers); i++) {
+        player->bodyFlameTimers[i] = 200 + (s32)Rand_ZeroFloat(55.0f);
+    }
+    player->bodyIsBurning = true;
+    Actor_PlaySfx(&player->actor, NA_SE_EV_FLAME_IGNITION);
+    Player_PlaySfx(player, NA_SE_VO_LI_FALL_L + player->ageProperties->voiceSfxIdOffset);
+    Ben_SetFate(BEN_FATE_BURNING);
+    this->actionFunc = EnBen_Burning;
+}
+
+/**
+ * Nothing puts it out. It watches until Link is dead; the game over takes it from there.
+ */
+void EnBen_Burning(EnBen* this, PlayState* play) {
+    if ((gSaveContext.save.saveInfo.playerData.health > 0) && ((play->gameplayFrames % EN_BEN_BURN_DRAIN_EVERY) == 0)) {
+        gSaveContext.save.saveInfo.playerData.health--;
+    }
+}
+
+/**
+ * Back after burning to death. No one is there, but someone has something to say.
+ */
+void EnBen_FateLine(EnBen* this, PlayState* play) {
+    if (this->timer > 0) {
+        this->timer--;
+        return;
+    }
+    if (play->msgCtx.msgMode != MSGMODE_NONE) {
+        return;
+    }
+    Player_SetCsActionWithHaltedActors(play, &this->actor, PLAYER_CSACTION_WAIT);
+    Message_StartTextbox(play, BEN_TEXT_TERRIBLE_FATE, NULL);
+    this->actionFunc = EnBen_FateLineSpeaking;
+}
+
+void EnBen_FateLineSpeaking(EnBen* this, PlayState* play) {
+    if (Message_GetState(&play->msgCtx) == TEXT_STATE_CLOSING) {
+        Player_SetCsAction(play, &this->actor, PLAYER_CSACTION_END);
+        Ben_SetFate(BEN_FATE_DONE);
+        EnBen_Vanish(this);
+    }
+}
+
+/**
+ * Trying to drown Link in the Laundry Pool to get away from it. It lets you, for a moment, then pulls you under.
+ */
+void EnBen_CheckDrowning(EnBen* this, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+
+    if ((play->sceneId != SCENE_ALLEY) || (Ben_GetFate() != BEN_FATE_NONE) ||
+        (play->transitionTrigger != TRANS_TRIGGER_OFF)) {
+        return;
+    }
+
+    if ((player->actor.bgCheckFlags & BGCHECKFLAG_WATER) && (player->actor.depthInWater > EN_BEN_DROWN_DEPTH)) {
+        if (player->transformation == PLAYER_FORM_DEKU) {
+            Ben_SetFate(BEN_FATE_DROWNED); // a Deku scrub sinks by itself, and the game voids you out
+            return;
+        }
+        this->drownFrames++;
+    } else {
+        this->drownFrames = 0;
+    }
+
+    if (this->drownFrames >= EN_BEN_DROWN_FRAMES) {
+        Ben_SetFate(BEN_FATE_DROWNED);
+        player->actor.freezeTimer = 40;
+        Player_PlaySfx(player, NA_SE_VO_LI_TAKEN_AWAY + player->ageProperties->voiceSfxIdOffset);
+        Audio_PlaySfx(NA_SE_OC_ABYSS);
+        func_80169EFC(play); // void out: back to where you went in
+    }
+}
+
+/**
  * Kill everything in Majora's lair that would fight or talk, so the room is empty.
  */
 void EnBen_EmptyLair(PlayState* play) {
@@ -481,6 +602,22 @@ void EnBen_EmptyLair(PlayState* play) {
 void EnBen_LairWait(EnBen* this, PlayState* play) {
     if (AudioSeq_GetActiveSeqId(SEQ_PLAYER_BGM_MAIN) != NA_BGM_DISABLED) {
         SEQCMD_STOP_SEQUENCE(SEQ_PLAYER_BGM_MAIN, 0);
+    }
+
+    if (!this->spawnedSkullKid) {
+        // Skull Kid, floating in the air in front of you and facing you. He does nothing. (Its object is loaded with
+        // the scene; see Scene_CommandSpawnList.)
+        Player* player = GET_PLAYER(play);
+        s16 yaw = player->actor.shape.rot.y;
+
+        this->spawnedSkullKid = true;
+        if (Object_GetSlot(&play->objectCtx, OBJECT_STK) > OBJECT_SLOT_NONE) {
+            Actor_Spawn(&play->actorCtx, play, ACTOR_DM_STK,
+                        player->actor.world.pos.x + (Math_SinS(yaw) * EN_BEN_SKULL_KID_DIST),
+                        player->actor.world.pos.y + EN_BEN_SKULL_KID_HEIGHT,
+                        player->actor.world.pos.z + (Math_CosS(yaw) * EN_BEN_SKULL_KID_DIST), 0, yaw + 0x8000, 0,
+                        0); // DM_STK_TYPE_SKULL_KID
+        }
     }
 
     if (this->timer > 0) {
@@ -512,6 +649,7 @@ void EnBen_Update(Actor* thisx, PlayState* play) {
 
     EnBen_UpdateMusic(this, play);
     EnBen_EmptyTown(play);
+    EnBen_CheckDrowning(this, play);
 
     this->actionFunc(this, play);
 

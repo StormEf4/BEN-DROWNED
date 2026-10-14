@@ -14,6 +14,7 @@ static u8 sHasRewound = false;
 static u8 sHasWarned = false;
 static u8 sSightings = 0;
 static u8 sDayFour = BEN_DAY_FOUR_NOT_YET;
+static u8 sFate = BEN_FATE_NONE;
 
 s32 Ben_GetDayFour(void) {
     return sDayFour;
@@ -21,6 +22,14 @@ s32 Ben_GetDayFour(void) {
 
 void Ben_SetDayFour(s32 state) {
     sDayFour = state;
+}
+
+s32 Ben_GetFate(void) {
+    return sFate;
+}
+
+void Ben_SetFate(s32 fate) {
+    sFate = fate;
 }
 
 s32 Ben_TryStartDayFour(PlayState* play) {
@@ -106,6 +115,7 @@ void Ben_ApplyIntroSkip(void) {
     sHasWarned = false;
     sSightings = 0;
     sDayFour = BEN_DAY_FOUR_NOT_YET;
+    sFate = BEN_FATE_NONE;
 
     gSaveContext.save.isFirstCycle = true;
     gSaveContext.save.cutsceneIndex = 0; // no intro cutscene

@@ -58,6 +58,20 @@ s32 Ben_IsHauntedScene(s16 sceneId);
 s32 Ben_GetSightings(void);
 void Ben_AddSighting(void);
 
+/* The rest of the 4th day, in canon order (STORY_BIBLE.md C9, C10). You try to drown Link in the Laundry Pool to get
+ * away, and the statue is standing right behind you when you come back up. You see it, and Link catches fire and dies.
+ * When you're back: "You've met with a terrible fate, haven't you?" Survives scene changes and the cycle reset. */
+typedef enum BenFate {
+    /* 0 */ BEN_FATE_NONE,
+    /* 1 */ BEN_FATE_DROWNED, // pulled under in the Laundry Pool; the next sighting is close behind you
+    /* 2 */ BEN_FATE_BURNING, // you saw it after drowning, and Link is on fire
+    /* 3 */ BEN_FATE_BURNED,  // died burning; the line is waiting for when you're back
+    /* 4 */ BEN_FATE_DONE
+} BenFate;
+
+s32 Ben_GetFate(void);
+void Ben_SetFate(s32 fate);
+
 /* Demo teaser: the Song of Time was played this session. Survives the cycle reset (code-segment state). */
 void Ben_OnSongOfTime(void);
 s32 Ben_HasRewound(void);
