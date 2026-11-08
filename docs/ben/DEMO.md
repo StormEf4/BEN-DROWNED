@@ -18,11 +18,18 @@ in `include/ben/ben.h`.
    corner, behind you. It never moves while you watch it. Look away and it's gone.
 6. That first sighting wakes the music: a slow, low Song of Healing. Each sighting after it is a little closer, even
    across districts. Every time it vanishes, the Happy Mask Salesman laughs somewhere.
-7. **Try to drown Link** to get away: wade into the Laundry Pool's water (or sink in it as a Deku scrub). After a
+7. **It gets worse the longer you stay.** Each sighting drains a little more color out of Clock Town, and the fog
+   closes in, darker. Sometimes, just before it shows up, you hear heavy stone footsteps right behind you, and they stay
+   behind you however you turn. Now and then it's there for an instant at the edge of the screen, then it isn't.
+8. **The fourth time, there's more than one.** A line of statues stands along the path you just walked, all facing
+   you. While they stare, the music stops, the color goes completely, a heartbeat thumps and the clock runs backwards.
+9. **Later, sometimes it doesn't leave.** Look away and look back, and it's closer, and closer, until it's right in
+   front of you and your hearts are beeping as if you're dying. Then the screen smears, and it's gone.
+10. **Try to drown Link** to get away: wade into the Laundry Pool's water (or sink in it as a Deku scrub). After a
    moment it pulls you under, and you come back up at the edge. Soon the statue is **standing right behind you**.
-8. This time it doesn't go away when you look at it. **Link catches fire and dies.** When you're back, a box says
+11. This time it doesn't go away when you look at it. **Link catches fire and dies.** When you're back, a box says
    **"You've met with a terrible fate, haven't you? ... BEN."**
-9. It never speaks, except once. Play the **Song of Time** and agree to go back. At dawn it is **standing right in
+12. It never speaks, except once. Play the **Song of Time** and agree to go back. At dawn it is **standing right in
    front of you**: **"YOU SHOULDN'T HAVE DONE THAT."** After that the music is slower and lower.
 
 ## Test script
@@ -39,6 +46,10 @@ in `include/ben/ben.h`.
 | 8 | Laundry Pool: stay in the water about 2 s → pulled under → back at the edge → the statue close behind you soon after |
 | 9 | Look at it: it stays, Link bursts into flames and dies → after the game over, "You've met with a terrible fate" |
 | 10 | Song of Time → dawn as **human** Link in South Clock Town → the statue in front of you and the red line |
+| 11 | Each sighting: the town a little greyer and foggier. Some waits: stone footsteps behind you, staying behind you as you turn |
+| 12 | After the second sighting: sometimes a split-second statue at the edge of the screen, with no laugh |
+| 13 | Fourth sighting: a line of statues along the path you just walked; music gone, all grey, heartbeat, the clock running backwards. Look away: all gone, laugh, the clock back where it was |
+| 14 | From the sixth sighting on, about half the time: look away and it's closer each time, beeping hearts up close, then a smear and the laugh. The music comes back after |
 
 Not in yet: the BEN save on the file select (Session 0).
 

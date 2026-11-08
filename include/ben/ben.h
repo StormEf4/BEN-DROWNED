@@ -57,6 +57,9 @@ s32 Ben_TryStartDayFour(struct PlayState* play);
 s32 Ben_IsHauntedScene(s16 sceneId);
 s32 Ben_GetSightings(void);
 void Ben_AddSighting(void);
+/* The one time it stands all along the path you just walked (once per playthrough of the 4th day). */
+s32 Ben_HasSeenTrail(void);
+void Ben_SetTrailSeen(void);
 
 /* The rest of the 4th day, in canon order (STORY_BIBLE.md C9, C10). You try to drown Link in the Laundry Pool to get
  * away, and the statue is standing right behind you when you come back up. You see it, and Link catches fire and dies.

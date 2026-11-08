@@ -13,6 +13,7 @@ static char sBenName[8] = { 0x0B, 0x0E, 0x17, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E };
 static u8 sHasRewound = false;
 static u8 sHasWarned = false;
 static u8 sSightings = 0;
+static u8 sHasSeenTrail = false;
 static u8 sDayFour = BEN_DAY_FOUR_NOT_YET;
 static u8 sFate = BEN_FATE_NONE;
 
@@ -75,6 +76,14 @@ void Ben_AddSighting(void) {
     }
 }
 
+s32 Ben_HasSeenTrail(void) {
+    return sHasSeenTrail;
+}
+
+void Ben_SetTrailSeen(void) {
+    sHasSeenTrail = true;
+}
+
 void Ben_OnSongOfTime(void) {
     if (sDayFour != BEN_DAY_FOUR_HAUNTED) {
         return; // an ordinary reset
@@ -114,6 +123,7 @@ void Ben_ApplyIntroSkip(void) {
     sHasRewound = false;
     sHasWarned = false;
     sSightings = 0;
+    sHasSeenTrail = false;
     sDayFour = BEN_DAY_FOUR_NOT_YET;
     sFate = BEN_FATE_NONE;
 

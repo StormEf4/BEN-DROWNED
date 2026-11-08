@@ -17,6 +17,15 @@
  *    "You've met with a terrible fate, haven't you?" (STORY_BIBLE.md C9, C10).
  *  - It almost never speaks. The one line it has is after the Song of Time, when it breaks its rule and is standing
  *    right in front of you at dawn: "YOU SHOULDN'T HAVE DONE THAT."
+ *
+ * Making it worse the longer it goes on (our own, beyond the canon):
+ *  - Every sighting drains a little more color out of Clock Town, and the fog closes in, darker.
+ *  - Some waits end with heavy stone footsteps right behind you. They stay behind you however you turn.
+ *  - Now and then it's there for an instant at the edge of the screen, then not. It doesn't count as a sighting.
+ *  - The fourth time, there isn't one of it. A line of them stands along the path you just walked, all facing you.
+ *  - Later, sometimes it doesn't leave when you look away. Each time you look back it's closer, until it's right
+ *    there. While it stares at you the music stops, the color is gone, you hear a heartbeat, your hearts beep as if
+ *    you're dying, and the clock runs backwards.
  */
 
 #include "z_en_ben.h"
@@ -41,6 +50,42 @@
 // The Happy Mask Salesman's laugh. The Great Fairy's laugh sample is swapped for his
 // (assets/audio/samples/SampleBank_0/great_fairy_laughter.wav), so this sound effect plays it.
 #define EN_BEN_LAUGH_SFX NA_SE_VO_FR_LAUGH_0
+
+#define EN_BEN_DREAD_SIGHTINGS 7             // by this many sightings, Clock Town is as far gone as it gets
+#define EN_BEN_FOG_NEAR 955                  // the fog at its thickest (0-1000: lower starts closer)
+#define EN_BEN_AMBIENT_DRAIN 0.5f            // and this much of the ambient light is gone
+#define EN_BEN_GREY_MOST 170                 // how grey the world gets from sightings alone (0-255)
+#define EN_BEN_GREY_STARING 255              // and while it stares at you
+#define EN_BEN_GREY_STEP 6                   // per frame, towards that
+#define EN_BEN_STEPS_BEFORE 70               // footsteps start this long before it appears (3.5 s)
+#define EN_BEN_STEP_EVERY 14                 // a step this often
+#define EN_BEN_STEP_FAR 420.0f               // the first step is this far behind you
+#define EN_BEN_STEP_NEAR 120.0f              // and the last this close
+#define EN_BEN_STEP_SFX NA_SE_EN_AMOS_WALK   // a stone statue hopping
+#define EN_BEN_STEPS_CHANCE 0.5f             // how often a wait ends with footsteps
+#define EN_BEN_GLIMPSE_FROM 2                // glimpses start after this many sightings
+#define EN_BEN_GLIMPSE_CHANCE 0.4f           // how often a wait has one
+#define EN_BEN_GLIMPSE_FRAMES 2              // how long it's there (a tenth of a second)
+#define EN_BEN_GLIMPSE_ANGLE 0x1800          // how far off the middle of the screen
+#define EN_BEN_GLIMPSE_DIST 750.0f           // and how far away
+#define EN_BEN_TRAIL_SIGHTING 3              // the sighting after this many is the line along your path
+#define EN_BEN_PATH_EVERY 8                  // your position is remembered this often
+#define EN_BEN_PATH_SPACING 60.0f            // if you've moved at least this far since the last one
+#define EN_BEN_TRAIL_NEAREST 300.0f          // none of the line stands closer to you than this
+#define EN_BEN_TRAIL_GAP 110.0f              // or closer to the next one than this
+#define EN_BEN_TRAIL_FEWEST 3                // with fewer than this many places to stand, it's an ordinary sighting
+#define EN_BEN_CREEP_FROM 5                  // it starts creeping up on you after this many sightings
+#define EN_BEN_CREEP_CHANCE 0.5f             // and does it this often
+#define EN_BEN_CREEP_STEP 0.55f              // each time you look away, it's this much of the way to you
+#define EN_BEN_CREEP_CLOSEST 100.0f          // this is as close as it comes
+#define EN_BEN_CREEP_GIVE_UP 60              // if it has nowhere closer to stand for this long (3 s), it's gone
+#define EN_BEN_CREEP_STARE 40                // look at it from that close for this long (2 s), and it's gone
+#define EN_BEN_ALARM_DIST 320.0f             // closer than this, your hearts beep as if you're dying
+#define EN_BEN_ALARM_EVERY 12                // how often they beep
+#define EN_BEN_REWIND_SPEED 40               // while it stares, the clock runs back this much per frame
+#define EN_BEN_REWIND_MOST CLOCK_TIME(1, 30) // but never more than this
+#define EN_BEN_BLUR_ALPHA 190                // after it's gone up close, the screen smears
+#define EN_BEN_BLUR_FRAMES 30                // for this long
 
 #define EN_BEN_CONFRONT_DIST 120.0f // after the Song of Time: how far in front of you it stands
 #define EN_BEN_CONFRONT_DELAY 90    // frames to wait after arriving, so the day title has gone
@@ -70,6 +115,7 @@ void EnBen_Draw(Actor* thisx, PlayState* play);
 
 void EnBen_Lurk(EnBen* this, PlayState* play);
 void EnBen_Stand(EnBen* this, PlayState* play);
+void EnBen_Creep(EnBen* this, PlayState* play, s32 visible);
 void EnBen_Confront(EnBen* this, PlayState* play);
 void EnBen_Speaking(EnBen* this, PlayState* play);
 void EnBen_LairWait(EnBen* this, PlayState* play);
@@ -271,6 +317,227 @@ s32 EnBen_TryPlaceInFront(EnBen* this, PlayState* play) {
 }
 
 /**
+ * A glimpse: somewhere near the edge of the screen, in plain view, far off. Returns false if there's nowhere.
+ */
+s32 EnBen_TryPlaceGlimpse(EnBen* this, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+    s16 yaw = Camera_GetCamDirYaw(GET_ACTIVE_CAM(play)) +
+              ((Rand_ZeroOne() < 0.5f) ? EN_BEN_GLIMPSE_ANGLE : -EN_BEN_GLIMPSE_ANGLE);
+    Vec3f pos;
+    s32 d;
+
+    for (d = 0; d < ARRAY_COUNT(sDistanceScales); d++) {
+        if (EnBen_FindSpot(play, player, yaw, EN_BEN_GLIMPSE_DIST * sDistanceScales[d], &pos) &&
+            EnBen_IsBodyVisible(play, &pos)) {
+            EnBen_PlaceAt(this, play, &pos);
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Remember where you've just been, a step at a time, so it can stand there later.
+ */
+void EnBen_RememberPath(EnBen* this, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+
+    if (this->pathTimer > 0) {
+        this->pathTimer--;
+        return;
+    }
+    if (!(player->actor.bgCheckFlags & BGCHECKFLAG_GROUND)) {
+        return;
+    }
+    if ((this->pathCount > 0) &&
+        (Math_Vec3f_DistXZ(&this->path[(this->pathHead + EN_BEN_PATH_POINTS - 1) % EN_BEN_PATH_POINTS],
+                           &player->actor.world.pos) < EN_BEN_PATH_SPACING)) {
+        return; // you haven't gone anywhere
+    }
+
+    this->path[this->pathHead] = player->actor.world.pos;
+    this->pathHead = (this->pathHead + 1) % EN_BEN_PATH_POINTS;
+    if (this->pathCount < EN_BEN_PATH_POINTS) {
+        this->pathCount++;
+    }
+    this->pathTimer = EN_BEN_PATH_EVERY;
+}
+
+/**
+ * Stand along the path you just walked: one of it at each place you passed, all out of view and all facing you.
+ * Returns false if you haven't walked far enough for that.
+ */
+s32 EnBen_TryPlaceTrail(EnBen* this, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+    Vec3f chosen[EN_BEN_TRAIL_COPIES + 1];
+    s32 count = 0;
+    s32 i;
+
+    // Oldest first, so the line starts back where you came from.
+    for (i = 0; (i < this->pathCount) && (count < ARRAY_COUNT(chosen)); i++) {
+        Vec3f* pos = &this->path[(this->pathHead + EN_BEN_PATH_POINTS - this->pathCount + i) % EN_BEN_PATH_POINTS];
+
+        if ((Math_Vec3f_DistXZ(pos, &player->actor.world.pos) < EN_BEN_TRAIL_NEAREST) ||
+            ((count > 0) && (Math_Vec3f_DistXZ(pos, &chosen[count - 1]) < EN_BEN_TRAIL_GAP)) ||
+            EnBen_IsBodyVisible(play, pos)) {
+            continue;
+        }
+        chosen[count++] = *pos;
+    }
+    if (count < EN_BEN_TRAIL_FEWEST) {
+        return false;
+    }
+
+    EnBen_PlaceAt(this, play, &chosen[0]);
+    for (i = 1; i < count; i++) {
+        this->trail[i - 1] = chosen[i];
+        this->trailYaw[i - 1] = Math_Vec3f_Yaw(&chosen[i], &player->actor.world.pos);
+    }
+    this->trailCount = count - 1;
+    return true;
+}
+
+/**
+ * Appear for a sighting. Usually it just stands somewhere; the fourth time it's a line of them along your path, and
+ * later on it sometimes creeps up on you.
+ */
+s32 EnBen_TryAppear(EnBen* this, PlayState* play) {
+    s32 sightings = Ben_GetSightings();
+
+    this->kind = EN_BEN_SIGHTING_STILL;
+    this->trailCount = 0;
+    if ((Ben_GetFate() == BEN_FATE_NONE) || (Ben_GetFate() == BEN_FATE_DONE)) {
+        if ((sightings >= EN_BEN_TRAIL_SIGHTING) && !Ben_HasSeenTrail() && EnBen_TryPlaceTrail(this, play)) {
+            this->kind = EN_BEN_SIGHTING_TRAIL;
+            return true;
+        }
+        if ((sightings >= EN_BEN_CREEP_FROM) && (Rand_ZeroOne() < EN_BEN_CREEP_CHANCE)) {
+            this->kind = EN_BEN_SIGHTING_CREEP;
+        }
+    }
+    return EnBen_TryPlaceSighting(this, play);
+}
+
+/**
+ * True if it, or any of it standing along your path, is in plain view.
+ */
+s32 EnBen_IsAnyVisible(EnBen* this, PlayState* play) {
+    s32 i;
+
+    if (EnBen_IsBodyVisible(play, &this->actor.world.pos)) {
+        return true;
+    }
+    for (i = 0; i < this->trailCount; i++) {
+        if (EnBen_IsBodyVisible(play, &this->trail[i])) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * How close you are to the nearest of it.
+ */
+f32 EnBen_GetNearestDist(EnBen* this, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+    f32 nearest = this->actor.xzDistToPlayer;
+    s32 i;
+
+    for (i = 0; i < this->trailCount; i++) {
+        nearest = CLAMP_MAX(nearest, Math_Vec3f_DistXZ(&this->trail[i], &player->actor.world.pos));
+    }
+    return nearest;
+}
+
+/**
+ * Put the clock back where it stopped, if it ran backwards while it stared at you. Nothing else moves it on the
+ * 4th day, so anything further off (like the Song of Time's dawn) is left alone.
+ */
+void EnBen_RestoreClock(EnBen* this) {
+    if ((u16)(this->stoppedTime - gSaveContext.save.time) <= (EN_BEN_REWIND_MOST + EN_BEN_REWIND_SPEED)) {
+        gSaveContext.save.time = this->stoppedTime;
+    }
+}
+
+/**
+ * It's looking right at you: the music goes, and so does the color. Or it isn't any more.
+ */
+void EnBen_SetStaring(EnBen* this, s32 staring) {
+    if (staring == this->isStaring) {
+        return;
+    }
+    this->isStaring = staring;
+    if (staring) {
+        this->stoppedTime = gSaveContext.save.time;
+        Audio_SetMainBgmVolume(0, 10);
+    } else {
+        EnBen_RestoreClock(this);
+        Audio_SetMainBgmVolume(0x7F, 20);
+    }
+}
+
+/**
+ * How far gone Clock Town is: nothing before the first sighting, all the way by the seventh.
+ */
+f32 EnBen_GetDread(void) {
+    return CLAMP_MAX(Ben_GetSightings(), EN_BEN_DREAD_SIGHTINGS) / (f32)EN_BEN_DREAD_SIGHTINGS;
+}
+
+/**
+ * The color drains out of the world and the fog closes in, darker, a little more with every sighting. While it
+ * stares at you, all the way.
+ */
+void EnBen_DrainWorld(EnBen* this, PlayState* play) {
+    static s16 sFogColor[] = { 12, 6, 14 };
+    EnvironmentContext* envCtx = &play->envCtx;
+    f32 dread = this->isStaring ? 1.0f : EnBen_GetDread();
+    s32 i;
+
+    envCtx->adjLightSettings.fogNear = (envCtx->lightSettings.fogNear > EN_BEN_FOG_NEAR)
+                                           ? (EN_BEN_FOG_NEAR - envCtx->lightSettings.fogNear) * dread
+                                           : 0;
+    for (i = 0; i < 3; i++) {
+        envCtx->adjLightSettings.fogColor[i] = (sFogColor[i] - envCtx->lightSettings.fogColor[i]) * dread;
+        envCtx->adjLightSettings.ambientColor[i] =
+            -envCtx->lightSettings.ambientColor[i] * EN_BEN_AMBIENT_DRAIN * dread;
+    }
+
+    Math_StepToS(&this->grey, this->isStaring ? EN_BEN_GREY_STARING : (s16)(EN_BEN_GREY_MOST * dread),
+                 EN_BEN_GREY_STEP);
+    gPlayVisMonoColor.r = 255;
+    gPlayVisMonoColor.g = 255;
+    gPlayVisMonoColor.b = 255;
+    gPlayVisMonoColor.a = this->grey;
+}
+
+/**
+ * Heavy stone steps behind you, closer each time, as the wait runs out. Always behind the camera, however you turn.
+ */
+void EnBen_Footsteps(EnBen* this, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+    s16 behindYaw = Camera_GetCamDirYaw(GET_ACTIVE_CAM(play)) + 0x8000;
+    Vec3f pos;
+    f32 invW;
+    f32 dist;
+
+    if (this->timer > EN_BEN_STEPS_BEFORE) {
+        return;
+    }
+    if (this->stepTimer > 0) {
+        this->stepTimer--;
+        return;
+    }
+    this->stepTimer = EN_BEN_STEP_EVERY;
+
+    dist = EN_BEN_STEP_NEAR + ((EN_BEN_STEP_FAR - EN_BEN_STEP_NEAR) * this->timer / EN_BEN_STEPS_BEFORE);
+    pos.x = player->actor.world.pos.x + (Math_SinS(behindYaw) * dist);
+    pos.y = player->actor.world.pos.y;
+    pos.z = player->actor.world.pos.z + (Math_CosS(behindYaw) * dist);
+    Actor_GetProjectedPos(play, &pos, &this->stepPos, &invW);
+    Audio_PlaySfx_AtPosWithPresetLowFreqAndHighReverb(&this->stepPos, EN_BEN_STEP_SFX);
+}
+
+/**
  * Nobody else is here. Runs every frame, since people can spawn after the statue does.
  */
 void EnBen_EmptyTown(PlayState* play) {
@@ -291,8 +558,28 @@ void EnBen_Vanish(EnBen* this) {
     s32 wait = EN_BEN_LURK_LONGEST - (Ben_GetSightings() * EN_BEN_LURK_SHRINK);
 
     this->isHidden = true;
+    this->kind = EN_BEN_SIGHTING_STILL;
+    this->trailCount = 0;
+    EnBen_SetStaring(this, false);
     this->timer = CLAMP_MIN(wait, EN_BEN_LURK_MIN) + (s32)Rand_ZeroFloat(EN_BEN_LURK_RANGE);
+    this->withSteps = (Ben_GetSightings() > 0) && (Rand_ZeroOne() < EN_BEN_STEPS_CHANCE);
+    this->stepTimer = 0;
+    this->glimpseAt = ((Ben_GetSightings() >= EN_BEN_GLIMPSE_FROM) && (Rand_ZeroOne() < EN_BEN_GLIMPSE_CHANCE))
+                          ? (this->timer / 2)
+                          : -1;
     this->actionFunc = EnBen_Lurk;
+}
+
+/**
+ * Gone, and the Happy Mask Salesman laughs somewhere. If it was staring at you, the screen smears.
+ */
+void EnBen_Leave(EnBen* this) {
+    Audio_PlaySfx(EN_BEN_LAUGH_SFX);
+    if (this->isStaring) {
+        Play_EnableMotionBlur(EN_BEN_BLUR_ALPHA);
+        this->blurFrames = EN_BEN_BLUR_FRAMES;
+    }
+    EnBen_Vanish(this);
 }
 
 void EnBen_Init(Actor* thisx, PlayState* play) {
@@ -316,6 +603,19 @@ void EnBen_Init(Actor* thisx, PlayState* play) {
     this->musicWarped = false;
     this->isConfronting = BEN_DEMO_TEASER && Ben_HasRewound() && !Ben_HasWarned();
     this->drownFrames = 0;
+    this->kind = EN_BEN_SIGHTING_STILL;
+    this->glimpseAt = -1;
+    this->glimpseFrames = 0;
+    this->withSteps = false;
+    this->stepTimer = 0;
+    this->pathTimer = 0;
+    this->pathHead = 0;
+    this->pathCount = 0;
+    this->trailCount = 0;
+    this->blurFrames = 0;
+    this->isStaring = false;
+    this->stoppedTime = gSaveContext.save.time;
+    this->grey = EN_BEN_GREY_MOST * EnBen_GetDread(); // already this grey as you walk in
     if (Ben_GetFate() == BEN_FATE_BURNING) {
         Ben_SetFate(BEN_FATE_BURNED); // Link burned to death, and this is where you came back
     }
@@ -349,6 +649,14 @@ void EnBen_Destroy(Actor* thisx, PlayState* play) {
 
     Collider_DestroyCylinder(play, &this->collider);
     gSaveContext.save.timeSpeedOffset = 0; // outside Clock Town the clock runs again
+    if (this->isStaring) {
+        EnBen_RestoreClock(this);
+        Audio_SetMainBgmVolume(0x7F, 0);
+    }
+    if (this->blurFrames > 0) {
+        Play_DisableMotionBlur();
+    }
+    gPlayVisMonoColor.a = 0;
 
     // Leaving the scene: undo the slowdown and make the next scene start its own music, even if it uses the same
     // sequence the game last requested before we took over (e.g. the Clock Town theme in the next district).
@@ -398,15 +706,34 @@ void EnBen_UpdateMusic(EnBen* this, PlayState* play) {
  * Hidden. Wait, then appear somewhere you aren't looking.
  */
 void EnBen_Lurk(EnBen* this, PlayState* play) {
+    if (this->glimpseFrames > 0) {
+        this->glimpseFrames--;
+        if (this->glimpseFrames == 0) {
+            this->isHidden = true; // was it ever there?
+        }
+    }
+
     if (this->timer > 0) {
+        if ((this->timer == this->glimpseAt) && EnBen_TryPlaceGlimpse(this, play)) {
+            this->isHidden = false;
+            this->glimpseFrames = EN_BEN_GLIMPSE_FRAMES;
+        }
+        if (this->withSteps) {
+            EnBen_Footsteps(this, play);
+        }
         this->timer--;
         return;
     }
-    if (EnBen_TryPlaceSighting(this, play)) {
+    if (this->glimpseFrames > 0) {
+        return;
+    }
+    if (EnBen_TryAppear(this, play)) {
         this->isHidden = false;
         this->isNoticed = false;
         this->seenFrames = 0;
         this->unseenFrames = 0;
+        this->creepFails = 0;
+        this->stareFrames = 0;
         this->timer = EN_BEN_PATIENCE;
         this->actionFunc = EnBen_Stand;
     } else {
@@ -418,7 +745,7 @@ void EnBen_Lurk(EnBen* this, PlayState* play) {
  * Standing still somewhere, facing you. Once you've seen it, it's gone the moment you look away.
  */
 void EnBen_Stand(EnBen* this, PlayState* play) {
-    s32 visible = EnBen_IsBodyVisible(play, &this->actor.world.pos);
+    s32 visible = EnBen_IsAnyVisible(this, play);
 
     if (!this->isNoticed) {
         if (visible) {
@@ -429,8 +756,15 @@ void EnBen_Stand(EnBen* this, PlayState* play) {
                 if (Ben_GetSightings() == 1) {
                     play->sceneSequences.seqId = NA_BGM_SONG_OF_HEALING; // the music wakes up
                 }
+                if (this->kind == EN_BEN_SIGHTING_TRAIL) {
+                    Ben_SetTrailSeen();
+                }
+                if (this->kind != EN_BEN_SIGHTING_STILL) {
+                    EnBen_SetStaring(this, true);
+                }
                 if (Ben_GetFate() == BEN_FATE_DROWNED) {
                     // You couldn't get away. This time it doesn't go anywhere.
+                    EnBen_SetStaring(this, true);
                     this->timer = EN_BEN_IGNITE_DELAY;
                     this->actionFunc = EnBen_Ignite;
                 }
@@ -446,15 +780,63 @@ void EnBen_Stand(EnBen* this, PlayState* play) {
         return;
     }
 
+    if (this->kind == EN_BEN_SIGHTING_CREEP) {
+        EnBen_Creep(this, play, visible);
+        return;
+    }
+
     if (!visible) {
         this->unseenFrames++;
     } else {
         this->unseenFrames = 0;
     }
 
-    if ((this->unseenFrames >= EN_BEN_GONE_FRAMES) || (this->actor.xzDistToPlayer < EN_BEN_TOO_CLOSE)) {
-        Audio_PlaySfx(EN_BEN_LAUGH_SFX); // the Happy Mask Salesman, somewhere, every time it's gone
-        EnBen_Vanish(this);
+    if ((this->unseenFrames >= EN_BEN_GONE_FRAMES) || (EnBen_GetNearestDist(this, play) < EN_BEN_TOO_CLOSE)) {
+        EnBen_Leave(this); // the Happy Mask Salesman, somewhere, every time it's gone
+    }
+}
+
+/**
+ * It doesn't leave when you look away. Every time you look back, it's closer, until it's right in front of you.
+ */
+void EnBen_Creep(EnBen* this, PlayState* play, s32 visible) {
+    Player* player = GET_PLAYER(play);
+    f32 dist = this->actor.xzDistToPlayer;
+    s32 isClose = dist < (EN_BEN_CREEP_CLOSEST * 1.5f);
+    Vec3f pos;
+
+    if (visible) {
+        this->unseenFrames = 0;
+        if (isClose) {
+            this->stareFrames++;
+            if (this->stareFrames >= EN_BEN_CREEP_STARE) {
+                EnBen_Leave(this);
+            }
+        }
+        return;
+    }
+
+    this->unseenFrames++;
+    if (this->unseenFrames < EN_BEN_GONE_FRAMES) {
+        return;
+    }
+    if (isClose) {
+        EnBen_Leave(this); // it was already right there
+        return;
+    }
+
+    if (EnBen_FindSpot(play, player, Math_Vec3f_Yaw(&player->actor.world.pos, &this->actor.world.pos),
+                       CLAMP_MIN(dist * EN_BEN_CREEP_STEP, EN_BEN_CREEP_CLOSEST), &pos) &&
+        !EnBen_IsBodyVisible(play, &pos)) {
+        EnBen_PlaceAt(this, play, &pos);
+        Actor_PlaySfx(&this->actor, EN_BEN_STEP_SFX);
+        this->creepFails = 0;
+        this->unseenFrames = 0;
+    } else {
+        this->creepFails++;
+        if (this->creepFails >= EN_BEN_CREEP_GIVE_UP) {
+            EnBen_Leave(this);
+        }
     }
 }
 
@@ -651,8 +1033,27 @@ void EnBen_Update(Actor* thisx, PlayState* play) {
     EnBen_UpdateMusic(this, play);
     EnBen_EmptyTown(play);
     EnBen_CheckDrowning(this, play);
+    EnBen_RememberPath(this, play);
 
     this->actionFunc(this, play);
+
+    EnBen_DrainWorld(this, play);
+    if (this->isStaring) {
+        Audio_PlaySfx(NA_SE_EN_LAST2_HEARTBEAT_OLD - SFX_FLAG);
+        if ((EnBen_GetNearestDist(this, play) < EN_BEN_ALARM_DIST) &&
+            ((play->gameplayFrames % EN_BEN_ALARM_EVERY) == 0)) {
+            Audio_PlaySfx(NA_SE_SY_HITPOINT_ALARM); // your hearts say you're dying
+        }
+        if (!Ben_HasRewound() && ((u16)(this->stoppedTime - gSaveContext.save.time) < EN_BEN_REWIND_MOST)) {
+            gSaveContext.save.time -= EN_BEN_REWIND_SPEED; // the clock runs backwards
+        }
+    }
+    if (this->blurFrames > 0) {
+        this->blurFrames--;
+        if (this->blurFrames == 0) {
+            Play_DisableMotionBlur();
+        }
+    }
 
     if (this->isHidden) {
         return;
@@ -668,6 +1069,7 @@ void EnBen_Update(Actor* thisx, PlayState* play) {
 
 void EnBen_Draw(Actor* thisx, PlayState* play) {
     EnBen* this = (EnBen*)thisx;
+    s32 i;
 
     if (this->isHidden) {
         return;
@@ -679,6 +1081,14 @@ void EnBen_Draw(Actor* thisx, PlayState* play) {
     Scene_SetRenderModeXlu(play, 0, 0x01);
     gDPSetEnvColor(POLY_OPA_DISP++, 255, 255, 255, 255);
     Gfx_DrawDListOpa(play, gElegyShellHumanDL);
+
+    // The rest of it, along your path.
+    for (i = 0; i < this->trailCount; i++) {
+        Matrix_Translate(this->trail[i].x, this->trail[i].y, this->trail[i].z, MTXMODE_NEW);
+        Matrix_RotateYS(this->trailYaw[i], MTXMODE_APPLY);
+        Matrix_Scale(this->actor.scale.x, this->actor.scale.y, this->actor.scale.z, MTXMODE_APPLY);
+        Gfx_DrawDListOpa(play, gElegyShellHumanDL);
+    }
 
     CLOSE_DISPS(play->state.gfxCtx);
 }
