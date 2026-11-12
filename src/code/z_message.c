@@ -5852,6 +5852,12 @@ void Message_Update(PlayState* play) {
                 break;
             }
 
+            // BEN: from Session 3 on, the Salesman laughs at the end of everything Tatl says (STORY_BIBLE.md C13)
+            if ((Ben_GetSession() >= BEN_SESSION_BEN) && (msgCtx->talkActor != NULL) &&
+                (msgCtx->talkActor == GET_PLAYER(play)->tatlActor)) {
+                Audio_PlaySfx(NA_SE_VO_FR_LAUGH_0);
+            }
+
             msgCtx->msgLength = 0;
             msgCtx->msgMode = MSGMODE_NONE;
             msgCtx->currentTextId = 0;

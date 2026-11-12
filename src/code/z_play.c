@@ -2322,18 +2322,10 @@ void Play_Init(GameState* thisx) {
     player = GET_PLAYER(this);
 
 #if BEN_SPIKE_STATUE
-    // BEN: the statue haunts all of Clock Town and the Laundry Pool
-    if (Ben_IsHauntedScene(this->sceneId)) {
+    // BEN: whatever the story has waiting in this scene: the statue, or a scripted scene (Ben_GetDirector)
+    if (Ben_GetDirector(this->sceneId) >= 0) {
         Actor_Spawn(&this->actorCtx, this, ACTOR_EN_BEN, player->actor.world.pos.x, player->actor.world.pos.y,
-                    player->actor.world.pos.z, 0, 0, 0, BEN_ACTOR_STATUE);
-    } else if (BEN_BOOT_SAVE && Ben_IsBootFile() && (this->sceneId == SCENE_F40)) {
-        // BEN: BEN's own file, at Stone Tower
-        Actor_Spawn(&this->actorCtx, this, ACTOR_EN_BEN, player->actor.world.pos.x, player->actor.world.pos.y,
-                    player->actor.world.pos.z, 0, 0, 0, BEN_ACTOR_BOOT);
-    } else if ((this->sceneId == SCENE_LAST_BS) && (Ben_GetDayFour() == BEN_DAY_FOUR_LAIR)) {
-        // BEN: the 4th day begins in Majora's lair
-        Actor_Spawn(&this->actorCtx, this, ACTOR_EN_BEN, player->actor.world.pos.x, player->actor.world.pos.y,
-                    player->actor.world.pos.z, 0, 0, 0, BEN_ACTOR_LAIR);
+                    player->actor.world.pos.z, 0, 0, 0, Ben_GetDirector(this->sceneId));
     }
 #endif
 

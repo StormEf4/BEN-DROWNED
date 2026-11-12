@@ -30,11 +30,17 @@
 #define BEN_TEXT_TERRIBLE_FATE 0x4D00
 #define BEN_TEXT_SHOULDNT_HAVE 0x4D01 // "YOU SHOULDN'T HAVE DONE THAT." after the Song of Time
 #define BEN_TEXT_STONE 0x4D02         // the garbled box on BEN's file at Stone Tower
+#define BEN_TEXT_SALESMAN 0x4D03      // Session 3: the Happy Mask Salesman, behind Deku Link in South Clock Town
 
 /* En_Ben params */
-#define BEN_ACTOR_STATUE 0 // the stalker statue
-#define BEN_ACTOR_LAIR 1   // invisible director for the 4th-day visit to Majora's lair
-#define BEN_ACTOR_BOOT 2   // BEN's own file at Stone Tower: the statue, and the game giving out
+#define BEN_ACTOR_STATUE 0   // the stalker statue
+#define BEN_ACTOR_LAIR 1     // invisible director for the 4th-day visit to Majora's lair
+#define BEN_ACTOR_BOOT 2     // BEN's own file at Stone Tower: the statue, and the game giving out
+#define BEN_ACTOR_SALESMAN 3 // Session 3: forced Deku form, a strange camera, the Salesman, the cut to Termina Field
+#define BEN_ACTOR_THRONE 4   // Session 3's end: the statue in the Deku King's chamber, then BEN / DROWNED
+
+/* Which En_Ben (by params) the story puts in this scene right now, or -1 for none. Spawned by Play_Init. */
+s32 Ben_GetDirector(s16 sceneId);
 
 /* Spike audio: Song of Healing slowed and pitched down (the runtime fallback for K7) */
 #define BEN_SPIKE_TEMPO_SCALE 60 // percent of normal tempo
@@ -57,6 +63,19 @@ void Ben_SetSession(s32 session); // also sets the step back to 0
 s32 Ben_GetStep(void);
 void Ben_SetStep(s32 step);
 
+/* Session 3 (BEN) steps */
+#define BEN_STEP3_ARRIVE 0 // dawn in South Clock Town, as a Deku scrub, and the Salesman
+#define BEN_STEP3_FIELD 1  // out in Termina Field and on to the swamp
+
+struct PlayState;
+/* Session 2 is over ("YOU SHOULDN'T HAVE DONE THAT."). Turns Link into a Deku scrub and starts Session 3. */
+void Ben_StartSessionBen(struct PlayState* play);
+/* Session 3 is over: the file is renamed DROWNED, Link is himself again, and the next session is Cold. */
+void Ben_BecomeDrowned(void);
+/* ...and saved as if the Song of Time were played, with BEN written into the other slot if it's empty (C15).
+ * In z_sram_NES.c. Writes synchronously: the game hangs for a moment, which is the point. */
+void Sram_BenEndSessionBen(struct PlayState* play);
+
 /* K2: name shown wherever text uses the player-name control code. Same 8-char encoding as playerName. */
 const char* Ben_GetPlayerName(void);
 
@@ -64,8 +83,9 @@ const char* Ben_GetPlayerName(void);
  * on the Night of the Final Day. That takes you to Majora's lair, and from then on Clock Town is haunted. */
 typedef enum BenDayFour {
     /* 0 */ BEN_DAY_FOUR_NOT_YET,
-    /* 1 */ BEN_DAY_FOUR_LAIR,   // on the way to, or in, Majora's lair
-    /* 2 */ BEN_DAY_FOUR_HAUNTED // back in an empty Clock Town with the clock stopped
+    /* 1 */ BEN_DAY_FOUR_LAIR,    // on the way to, or in, Majora's lair
+    /* 2 */ BEN_DAY_FOUR_HAUNTED, // back in an empty Clock Town with the clock stopped
+    /* 3 */ BEN_DAY_FOUR_OVER     // Session 3 has begun; Clock Town has its people back
 } BenDayFour;
 
 struct PlayState;

@@ -183,8 +183,12 @@ void Scene_CommandSpawnList(PlayState* play, SceneCmd* cmd) {
 
     // BEN: on the 4th day, Skull Kid floats over the empty lair (STORY_BIBLE.md C5). The lair has no Skull Kid object
     // of its own, so load it here, before the rooms' objects, the way the telescope loads it.
-    if ((play->sceneId == SCENE_LAST_BS) && (Ben_GetDayFour() == BEN_DAY_FOUR_LAIR)) {
+    if (Ben_GetDirector(play->sceneId) == BEN_ACTOR_LAIR) {
         Object_SpawnPersistent(&play->objectCtx, OBJECT_STK);
+    }
+    // BEN: the Happy Mask Salesman, in South Clock Town at the start of Session 3 (STORY_BIBLE.md C12)
+    if (Ben_GetDirector(play->sceneId) == BEN_ACTOR_SALESMAN) {
+        Object_SpawnPersistent(&play->objectCtx, OBJECT_OSN);
     }
 }
 

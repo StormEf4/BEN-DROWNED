@@ -35,6 +35,20 @@ DELAY(0x0028) COLOR_RED "B E N" COLOR_DEFAULT
 )
 )
 
+// BEN_TEXT_SALESMAN: Session 3, the Happy Mask Salesman, standing behind Deku Link at dawn (STORY_BIBLE.md C12)
+DEFINE_MESSAGE(0x4D03, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+"Ah... You came back." BOX_BREAK
+"You've been playing with him," "\n"
+"haven't you?" BOX_BREAK
+"He doesn't like it when" "\n"
+"you leave, you know." BOX_BREAK
+"So he made you something" "\n"
+"that can't." DELAY(0x0028)
+)
+)
+
 /*
  * The following two messages should be kept last and in this order.
  * Message 0xFFFD must be last to not break the message debugger.

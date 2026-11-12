@@ -9,6 +9,8 @@
 
 // "BEN" in the file-select character encoding: 0x0A + n is the nth capital letter, 0x3E is a space.
 static char sBenName[8] = { 0x0B, 0x0E, 0x17, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E };
+// and "DROWNED"
+static char sDrownedName[8] = { 0x0D, 0x1B, 0x18, 0x20, 0x17, 0x0E, 0x0D, 0x3E };
 
 /**
  * K1 story state. It lives in a block of the save file that vanilla never touches (SaveInfo.unk_DF4, 0x54 bytes):
@@ -50,6 +52,9 @@ s32 Ben_GetSession(void) {
 void Ben_SetSession(s32 session) {
     BEN_SAVE->session = session;
     BEN_SAVE->step = 0;
+    // Each session starts its stalking over: far away again, and one more line of statues to come.
+    BEN_SAVE->sightings = 0;
+    Ben_SetFlag(BEN_FLAG_TRAIL_SEEN, false);
 }
 
 s32 Ben_GetStep(void) {
@@ -91,6 +96,63 @@ s32 Ben_TryStartDayFour(PlayState* play) {
     play->transitionTrigger = TRANS_TRIGGER_START;
     play->transitionType = TRANS_TYPE_FADE_BLACK_SLOW;
     return true;
+}
+
+s32 Ben_GetDirector(s16 sceneId) {
+    if (BEN_BOOT_SAVE && Ben_IsBootFile()) {
+        return (sceneId == SCENE_F40) ? BEN_ACTOR_BOOT : -1;
+    }
+    if (Ben_IsHauntedScene(sceneId)) {
+        return BEN_ACTOR_STATUE;
+    }
+    if ((sceneId == SCENE_LAST_BS) && (Ben_GetDayFour() == BEN_DAY_FOUR_LAIR)) {
+        return BEN_ACTOR_LAIR;
+    }
+
+    switch (Ben_GetSession()) {
+        case BEN_SESSION_BEN:
+            switch (sceneId) {
+                case SCENE_CLOCKTOWER:
+                    return (Ben_GetStep() == BEN_STEP3_ARRIVE) ? BEN_ACTOR_SALESMAN : -1;
+
+                case SCENE_00KEIKOKU:    // Termina Field
+                case SCENE_24KEMONOMITI: // Road to Southern Swamp
+                case SCENE_20SICHITAI:   // Southern Swamp
+                case SCENE_22DEKUCITY:   // Deku Palace
+                    return BEN_ACTOR_STATUE;
+
+                case SCENE_DEKU_KING:
+                    return BEN_ACTOR_THRONE;
+
+                default:
+                    return -1;
+            }
+
+        default:
+            return -1;
+    }
+}
+
+void Ben_StartSessionBen(PlayState* play) {
+    Ben_SetSession(BEN_SESSION_BEN);
+    Ben_SetDayFour(BEN_DAY_FOUR_OVER);
+    Ben_SetFate(BEN_FATE_NONE);
+
+    // It turns you into him (STORY_BIBLE.md C12). A flash, and you're a Deku scrub at dawn.
+    gSaveContext.save.playerForm = PLAYER_FORM_DEKU;
+    play->nextEntrance = ENTRANCE(SOUTH_CLOCK_TOWN, 0);
+    play->transitionTrigger = TRANS_TRIGGER_START;
+    play->transitionType = TRANS_TYPE_FADE_WHITE_FAST;
+}
+
+void Ben_BecomeDrowned(void) {
+    s32 i;
+
+    for (i = 0; i < ARRAY_COUNT(gSaveContext.save.saveInfo.playerData.playerName); i++) {
+        gSaveContext.save.saveInfo.playerData.playerName[i] = sDrownedName[i];
+    }
+    gSaveContext.save.playerForm = PLAYER_FORM_HUMAN;
+    Ben_SetSession(BEN_SESSION_COLD);
 }
 
 s32 Ben_IsHauntedScene(s16 sceneId) {

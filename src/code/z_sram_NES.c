@@ -1882,6 +1882,54 @@ s32 Sram_BenPlantBootSave(GameState* gameState, SramContext* sramCtx) {
     return true;
 }
 
+/**
+ * BEN: Session 3 ends in the Deku King's chamber (STORY_BIBLE.md C15). Save the file the way the Song of Time does,
+ * renamed DROWNED, and if the other slot is empty, BEN is in it now.
+ */
+void Sram_BenEndSessionBen(PlayState* play) {
+    SramContext* sramCtx = &play->sramCtx;
+    s32 otherFile;
+    s32 i;
+
+    Ben_BecomeDrowned();
+    Sram_SaveEndOfCycle(play);
+    gSaveContext.timerStates[TIMER_ID_MOON_CRASH] = TIMER_STATE_OFF;
+    func_8014546C(sramCtx);
+
+    if ((gSaveContext.fileNum == 0xFF) || !gSaveContext.flashSaveAvailable) {
+        return;
+    }
+    SysFlashrom_WriteSync(sramCtx->saveBuf, gFlashSaveStartPages[gSaveContext.fileNum * 2],
+                          gFlashSpecialSaveNumPages[gSaveContext.fileNum * 2]);
+
+    if (!BEN_BOOT_SAVE) {
+        return;
+    }
+    otherFile = gSaveContext.fileNum ^ 1;
+    if (SysFlashrom_Read(sramCtx->saveBuf, gFlashSaveStartPages[otherFile * 2], 1) == 0) {
+        char* newf = (char*)&sramCtx->saveBuf[offsetof(Save, saveInfo.playerData.newf)];
+
+        for (i = 0; i < 6; i++) {
+            if (newf[i] != "ZELDA3"[i]) {
+                break;
+            }
+        }
+        if (i == 6) {
+            return; // that one's yours
+        }
+    }
+
+    // gSaveContext is about to be thrown away: the game goes back to the title screen.
+    Ben_MakeBootSave();
+    gSaveContext.save.isOwlSave = false;
+    gSaveContext.save.saveInfo.checksum = 0;
+    gSaveContext.save.saveInfo.checksum = Sram_CalcChecksum(&gSaveContext.save, sizeof(Save));
+    bzero(sramCtx->saveBuf, SAVE_BUFFER_SIZE);
+    Lib_MemCpy(sramCtx->saveBuf, &gSaveContext.save, sizeof(Save));
+    Lib_MemCpy(&sramCtx->saveBuf[0x2000], &gSaveContext.save, sizeof(Save));
+    Sram_SyncWriteToFlash(sramCtx, gFlashSaveStartPages[otherFile * 2], gFlashSpecialSaveNumPages[otherFile * 2]);
+}
+
 void Sram_WriteSaveOptionsToBuffer(SramContext* sramCtx) {
     if (gSaveContext.flashSaveAvailable) {
         gSaveContext.options.language = LANGUAGE_ENG;

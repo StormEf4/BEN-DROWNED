@@ -31,6 +31,7 @@
 #include "z_en_ben.h"
 #include "ben/ben.h"
 #include "assets/objects/gameplay_keep/gameplay_keep.h"
+#include "overlays/actors/ovl_En_Osn/z_en_osn.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_DRAW_CULLING_DISABLED | ACTOR_FLAG_LOCK_ON_DISABLED)
 
@@ -111,6 +112,20 @@
 #define EN_BEN_BOOT_GIVE_OUT 50    // and how long it takes to give out
 #define EN_BEN_BOOT_BLUR_ALPHA 235
 
+#define EN_BEN_SALESMAN_START 20         // Session 3: frames after the white flash before it starts
+#define EN_BEN_SALESMAN_ANGLE_FRAMES 60  // how long the strange angle holds before he's there
+#define EN_BEN_SALESMAN_REVEAL_FRAMES 30 // how long you look at him before he speaks
+#define EN_BEN_SALESMAN_CUT_FRAMES 15    // after his laugh, the cut to Termina Field
+#define EN_BEN_SALESMAN_BEHIND 70.0f     // how far behind you he stands
+#define EN_BEN_SALESMAN_ROLL 0x1C00      // the camera's tilt
+#define EN_BEN_SALESMAN_TEMPO_SCALE 55   // Session 3: his theme, slowed (percent)
+#define EN_BEN_SALESMAN_FREQ_SCALE 700   // and lowered (1000 = normal)
+
+#define EN_BEN_THRONE_DIST 350.0f // Session 3's end: how far in front of you it stands in the Deku King's chamber
+#define EN_BEN_THRONE_NEAR 180.0f // walk this close to it
+#define EN_BEN_THRONE_STARE 100   // or look at it this long (5 s)
+#define EN_BEN_THRONE_GIVE_OUT 40 // then the screen goes, and the game saves and gives out
+
 #define EN_BEN_REWOUND_TEMPO_SCALE 45
 #define EN_BEN_REWOUND_FREQ_SCALE 650
 
@@ -129,6 +144,10 @@ void EnBen_Ignite(EnBen* this, PlayState* play);
 void EnBen_Burning(EnBen* this, PlayState* play);
 void EnBen_FateLine(EnBen* this, PlayState* play);
 void EnBen_FateLineSpeaking(EnBen* this, PlayState* play);
+void EnBen_SalesmanScene(EnBen* this, PlayState* play);
+void EnBen_Throne(EnBen* this, PlayState* play);
+u16 EnBen_GetSceneSeq(EnBen* this, PlayState* play);
+void EnBen_SetSceneSeq(EnBen* this, PlayState* play);
 
 ActorProfile En_Ben_Profile = {
     /**/ ACTOR_EN_BEN,
@@ -602,6 +621,16 @@ void EnBen_Init(Actor* thisx, PlayState* play) {
         this->actionFunc = EnBen_LairWait;
         return;
     }
+    if (this->actor.params == BEN_ACTOR_SALESMAN) {
+        // Dawn, and no music at all.
+        play->sceneSequences.seqId = NA_BGM_NO_MUSIC;
+        this->isHidden = true;
+        this->directorStep = 0;
+        this->directorTimer = 0;
+        this->other = NULL;
+        this->actionFunc = EnBen_SalesmanScene;
+        return;
+    }
 
     Actor_ProcessInitChain(&this->actor, sInitChain);
     Collider_InitAndSetCylinder(play, &this->collider, &this->actor, &sCylinderInit);
@@ -628,9 +657,9 @@ void EnBen_Init(Actor* thisx, PlayState* play) {
         Ben_SetFate(BEN_FATE_BURNED); // Link burned to death, and this is where you came back
     }
 
-    // Spawned during Play_Init, before the scene's music starts. Until you've seen it, there is no music at all.
-    play->sceneSequences.seqId =
-        ((Ben_GetSightings() > 0) && (this->actor.params != BEN_ACTOR_BOOT)) ? NA_BGM_SONG_OF_HEALING : NA_BGM_NO_MUSIC;
+    // Spawned during Play_Init, before the scene's music starts. On the 4th day, until you've seen it, there is no
+    // music at all.
+    EnBen_SetSceneSeq(this, play);
 
     // The camera isn't set up yet during Play_Init, so nothing is placed until updates start.
     this->isHidden = true;
@@ -643,6 +672,10 @@ void EnBen_Init(Actor* thisx, PlayState* play) {
     } else if (Ben_GetFate() == BEN_FATE_DROWNED) {
         this->timer = EN_BEN_DROWNED_DELAY;
         this->actionFunc = EnBen_Lurk;
+    } else if (this->actor.params == BEN_ACTOR_THRONE) {
+        this->directorStep = 0;
+        this->directorTimer = 0;
+        this->actionFunc = EnBen_Throne;
     } else if (this->actor.params == BEN_ACTOR_BOOT) {
         this->directorStep = 0;
         this->directorTimer = 0;
@@ -658,6 +691,12 @@ void EnBen_Destroy(Actor* thisx, PlayState* play) {
     EnBen* this = (EnBen*)thisx;
 
     if (this->actor.params == BEN_ACTOR_LAIR) {
+        return;
+    }
+    if (this->actor.params == BEN_ACTOR_SALESMAN) {
+        if ((this->directorStep != 0) && (this->directorStep < 5)) {
+            Cutscene_StopManual(play, &play->csCtx);
+        }
         return;
     }
 
@@ -683,14 +722,46 @@ void EnBen_Destroy(Actor* thisx, PlayState* play) {
  * Silence until the first sighting. After it, the Song of Healing, slowed and pitched down (more so after the Song
  * of Time), whatever else tries to start music.
  */
+/**
+ * What should be playing here, or NA_BGM_DISABLED for silence.
+ *  - The 4th day: nothing until the first sighting, then a slowed, pitched-down Song of Healing.
+ *  - Session 3: the Happy Mask Salesman's theme, slowed and lowered, in Termina Field and on the road to the swamp
+ *    (STORY_BIBLE.md C14). The swamp and Deku Palace are silent.
+ *  - BEN's own file: silence.
+ */
+u16 EnBen_GetSceneSeq(EnBen* this, PlayState* play) {
+    if ((this->actor.params == BEN_ACTOR_BOOT) || (this->actor.params == BEN_ACTOR_THRONE)) {
+        return NA_BGM_DISABLED;
+    }
+    if (Ben_GetSession() == BEN_SESSION_BEN) {
+        return ((play->sceneId == SCENE_00KEIKOKU) || (play->sceneId == SCENE_24KEMONOMITI))
+                   ? NA_BGM_HAPPY_MASK_SALESMAN
+                   : NA_BGM_DISABLED;
+    }
+    return (Ben_GetSightings() > 0) ? NA_BGM_SONG_OF_HEALING : NA_BGM_DISABLED;
+}
+
+/**
+ * Tell the scene what its music is (it only listens while it's loading, or when it next restarts its music).
+ */
+void EnBen_SetSceneSeq(EnBen* this, PlayState* play) {
+    u16 seqId = EnBen_GetSceneSeq(this, play);
+
+    play->sceneSequences.seqId = (seqId == NA_BGM_DISABLED) ? NA_BGM_NO_MUSIC : seqId;
+}
+
+/**
+ * Keeps the scene's music what the story wants, slowed and lowered, whatever else tries to start music.
+ */
 void EnBen_UpdateMusic(EnBen* this, PlayState* play) {
     u16 activeSeqId = AudioSeq_GetActiveSeqId(SEQ_PLAYER_BGM_MAIN);
+    u16 seqId = EnBen_GetSceneSeq(this, play);
 
     if (this->musicCooldown > 0) {
         this->musicCooldown--;
     }
 
-    if ((Ben_GetSightings() == 0) || (this->actor.params == BEN_ACTOR_BOOT)) {
+    if (seqId == NA_BGM_DISABLED) {
         if ((activeSeqId != NA_BGM_DISABLED) && (this->musicCooldown == 0)) {
             SEQCMD_STOP_SEQUENCE(SEQ_PLAYER_BGM_MAIN, 20);
             this->musicCooldown = EN_BEN_MUSIC_RETRY_FRAMES;
@@ -698,14 +769,17 @@ void EnBen_UpdateMusic(EnBen* this, PlayState* play) {
         return;
     }
 
-    if (activeSeqId != NA_BGM_SONG_OF_HEALING) {
+    if (activeSeqId != seqId) {
         this->musicWarped = false;
         if (this->musicCooldown == 0) {
-            SEQCMD_PLAY_SEQUENCE(SEQ_PLAYER_BGM_MAIN, 0, NA_BGM_SONG_OF_HEALING);
+            SEQCMD_PLAY_SEQUENCE(SEQ_PLAYER_BGM_MAIN, 0, seqId);
             this->musicCooldown = EN_BEN_MUSIC_RETRY_FRAMES;
         }
     } else if (!this->musicWarped) {
-        if (BEN_DEMO_TEASER && Ben_HasRewound()) {
+        if (seqId == NA_BGM_HAPPY_MASK_SALESMAN) {
+            SEQCMD_SCALE_TEMPO(SEQ_PLAYER_BGM_MAIN, 0, EN_BEN_SALESMAN_TEMPO_SCALE);
+            SEQCMD_SET_SEQPLAYER_FREQ(SEQ_PLAYER_BGM_MAIN, 0, EN_BEN_SALESMAN_FREQ_SCALE);
+        } else if (BEN_DEMO_TEASER && Ben_HasRewound()) {
             SEQCMD_SCALE_TEMPO(SEQ_PLAYER_BGM_MAIN, 0, EN_BEN_REWOUND_TEMPO_SCALE);
             SEQCMD_SET_SEQPLAYER_FREQ(SEQ_PLAYER_BGM_MAIN, 0, EN_BEN_REWOUND_FREQ_SCALE);
         } else {
@@ -768,7 +842,7 @@ void EnBen_Stand(EnBen* this, PlayState* play) {
                 this->isNoticed = true;
                 Ben_AddSighting();
                 if (Ben_GetSightings() == 1) {
-                    play->sceneSequences.seqId = NA_BGM_SONG_OF_HEALING; // the music wakes up
+                    EnBen_SetSceneSeq(this, play); // the music wakes up
                 }
                 if (this->kind == EN_BEN_SIGHTING_TRAIL) {
                     Ben_SetTrailSeen();
@@ -885,6 +959,8 @@ void EnBen_Speaking(EnBen* this, PlayState* play) {
         this->isConfronting = false;
         Ben_SetWarned();
         EnBen_Vanish(this);
+        Audio_PlaySfx(EN_BEN_LAUGH_SFX);
+        Ben_StartSessionBen(play); // and it turns you into him
     }
 }
 
@@ -1033,6 +1109,166 @@ void EnBen_LairWait(EnBen* this, PlayState* play) {
 }
 
 /**
+ * Session 3 (STORY_BIBLE.md C12). Dawn in South Clock Town, and you're a Deku scrub. The camera hangs low and
+ * crooked. When it rights itself, the Happy Mask Salesman is standing there, and he knows. Then he laughs, and you're
+ * in Termina Field.
+ */
+void EnBen_SalesmanScene(EnBen* this, PlayState* play) {
+    static s16 sYaws[] = { 0x8000, 0x6000, -0x6000, 0x4000, -0x4000, 0 }; // behind you first
+    Player* player = GET_PLAYER(play);
+    Vec3f eye;
+    Vec3f at;
+    Vec3f pos;
+    s32 i;
+
+    this->directorTimer++;
+
+    switch (this->directorStep) {
+        case 0: // let the flash clear
+            if ((this->directorTimer >= EN_BEN_SALESMAN_START) && (play->transitionTrigger == TRANS_TRIGGER_OFF) &&
+                (play->transitionMode == TRANS_MODE_OFF) && (play->msgCtx.msgMode == MSGMODE_NONE)) {
+                Player_SetCsActionWithHaltedActors(play, &this->actor, PLAYER_CSACTION_WAIT);
+                Cutscene_StartManual(play, &play->csCtx);
+                this->subCamId = Play_CreateSubCamera(play);
+                Play_ChangeCameraStatus(play, CAM_ID_MAIN, CAM_STATUS_WAIT);
+                Play_ChangeCameraStatus(play, this->subCamId, CAM_STATUS_ACTIVE);
+                this->directorStep = 1;
+                this->directorTimer = 0;
+            }
+            break;
+
+        case 1: // down on the ground, tilted, looking up past him
+            eye.x = player->actor.world.pos.x + (Math_SinS(player->actor.shape.rot.y + 0x2800) * 75.0f);
+            eye.y = player->actor.world.pos.y + 4.0f;
+            eye.z = player->actor.world.pos.z + (Math_CosS(player->actor.shape.rot.y + 0x2800) * 75.0f);
+            at = player->actor.world.pos;
+            at.y += 35.0f;
+            Play_SetCameraAtEye(play, this->subCamId, &at, &eye);
+            Play_SetCameraRoll(play, this->subCamId, EN_BEN_SALESMAN_ROLL);
+
+            if (this->directorTimer >= EN_BEN_SALESMAN_ANGLE_FRAMES) {
+                // While you couldn't see behind you, he got there.
+                pos = player->actor.world.pos;
+                pos.x -= Math_SinS(player->actor.shape.rot.y) * EN_BEN_SALESMAN_BEHIND;
+                pos.z -= Math_CosS(player->actor.shape.rot.y) * EN_BEN_SALESMAN_BEHIND;
+                for (i = 0; i < ARRAY_COUNT(sYaws); i++) {
+                    if (EnBen_FindSpot(play, player, player->actor.shape.rot.y + sYaws[i], EN_BEN_SALESMAN_BEHIND,
+                                       &pos)) {
+                        break;
+                    }
+                }
+                this->other = Actor_Spawn(&play->actorCtx, play, ACTOR_EN_OSN, pos.x, pos.y, pos.z, 0,
+                                          Math_Vec3f_Yaw(&pos, &player->actor.world.pos), 0, OSN_TYPE_CUTSCENE);
+                if (this->other == NULL) {
+                    this->directorStep = 4; // nobody came; just go
+                } else {
+                    this->directorStep = 2;
+                }
+                this->directorTimer = 0;
+            }
+            break;
+
+        case 2: // there he is
+        case 3:
+            eye.x = player->actor.world.pos.x +
+                    (Math_SinS(Math_Vec3f_Yaw(&this->other->world.pos, &player->actor.world.pos)) * 90.0f);
+            eye.y = player->actor.world.pos.y + 15.0f;
+            eye.z = player->actor.world.pos.z +
+                    (Math_CosS(Math_Vec3f_Yaw(&this->other->world.pos, &player->actor.world.pos)) * 90.0f);
+            at = this->other->world.pos;
+            at.y += 60.0f;
+            Play_SetCameraAtEye(play, this->subCamId, &at, &eye);
+            Play_SetCameraRoll(play, this->subCamId, 0);
+
+            if ((this->directorStep == 2) && (this->directorTimer >= EN_BEN_SALESMAN_REVEAL_FRAMES)) {
+                Message_StartTextbox(play, BEN_TEXT_SALESMAN, this->other);
+                this->directorStep = 3;
+            } else if ((this->directorStep == 3) && (Message_GetState(&play->msgCtx) == TEXT_STATE_CLOSING)) {
+                Audio_PlaySfx(EN_BEN_LAUGH_SFX);
+                this->directorStep = 4;
+                this->directorTimer = 0;
+            }
+            break;
+
+        case 4: // and you're in Termina Field
+            if (this->directorTimer >= EN_BEN_SALESMAN_CUT_FRAMES) {
+                func_80169AFC(play, this->subCamId, 0);
+                Cutscene_StopManual(play, &play->csCtx);
+                Player_SetCsAction(play, &this->actor, PLAYER_CSACTION_END);
+                Ben_SetStep(BEN_STEP3_FIELD);
+                play->nextEntrance = ENTRANCE(TERMINA_FIELD, 0);
+                play->transitionTrigger = TRANS_TRIGGER_START;
+                play->transitionType = TRANS_TYPE_INSTANT;
+                this->directorStep = 5;
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
+/**
+ * Session 3's end. The Deku King's chamber is empty, and it's on the throne... no, in front of it, waiting. Walk up to
+ * it or look at it too long, and the game gives out. When it comes back, your file is called DROWNED, and BEN is in
+ * the other slot (STORY_BIBLE.md C15).
+ */
+void EnBen_Throne(EnBen* this, PlayState* play) {
+    static f32 sScales[] = { 1.0f, 0.75f, 0.5f };
+    Player* player = GET_PLAYER(play);
+    Vec3f pos;
+    s32 i;
+
+    this->directorTimer++;
+
+    switch (this->directorStep) {
+        case 0: // somewhere in front of you, once you're in
+            if ((this->directorTimer < EN_BEN_SALESMAN_START) || (play->csCtx.state != CS_STATE_IDLE) ||
+                (play->msgCtx.msgMode != MSGMODE_NONE)) {
+                break;
+            }
+            for (i = 0; i < ARRAY_COUNT(sScales); i++) {
+                if (EnBen_FindSpot(play, player, player->actor.shape.rot.y, EN_BEN_THRONE_DIST * sScales[i], &pos)) {
+                    EnBen_PlaceAt(this, play, &pos);
+                    this->isHidden = false;
+                    this->kind = EN_BEN_SIGHTING_STILL;
+                    this->seenFrames = 0;
+                    EnBen_SetStaring(this, true);
+                    this->directorStep = 1;
+                    this->directorTimer = 0;
+                    break;
+                }
+            }
+            break;
+
+        case 1: // it just waits for you
+            if (EnBen_IsAnyVisible(this, play)) {
+                this->seenFrames++;
+            }
+            if ((this->seenFrames >= EN_BEN_THRONE_STARE) || (this->actor.xzDistToPlayer < EN_BEN_THRONE_NEAR)) {
+                Player_SetCsActionWithHaltedActors(play, &this->actor, PLAYER_CSACTION_WAIT);
+                Play_EnableMotionBlur(EN_BEN_BOOT_BLUR_ALPHA);
+                this->blurFrames = 0x7FFF; // Destroy turns it off
+                Audio_PlaySfx(EN_BEN_LAUGH_SFX);
+                this->directorStep = 2;
+                this->directorTimer = 0;
+            }
+            break;
+
+        case 2: // and the game gives out
+            if (this->directorTimer >= EN_BEN_THRONE_GIVE_OUT) {
+                this->directorStep = 3;
+                Sram_BenEndSessionBen(play);
+                Ben_CrashToTitle(play);
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
+/**
  * BEN's own file. You're at Stone Tower an hour before the moon falls, with every mask, and something is wrong with
  * the text. The statue is somewhere, and gets closer whenever you look away. Then the game gives out and you're back
  * at the title screen.
@@ -1086,6 +1322,13 @@ void EnBen_Update(Actor* thisx, PlayState* play) {
 
     if (this->actor.params == BEN_ACTOR_LAIR) {
         EnBen_EmptyLair(play);
+        this->actionFunc(this, play);
+        return;
+    }
+    if (this->actor.params == BEN_ACTOR_SALESMAN) {
+        if (AudioSeq_GetActiveSeqId(SEQ_PLAYER_BGM_MAIN) != NA_BGM_DISABLED) {
+            SEQCMD_STOP_SEQUENCE(SEQ_PLAYER_BGM_MAIN, 0);
+        }
         this->actionFunc(this, play);
         return;
     }
