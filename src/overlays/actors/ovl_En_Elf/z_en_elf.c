@@ -7,6 +7,7 @@
 #include "z_en_elf.h"
 #include "attributes.h"
 #include "z64elf_message.h"
+#include "ben/ben.h" // BEN
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_DRAW_CULLING_DISABLED | ACTOR_FLAG_UPDATE_DURING_OCARINA)
 
@@ -1460,6 +1461,12 @@ void func_8089010C(Actor* thisx, PlayState* play) {
     if (temp_v0 != this->unk_266) {
         this->unk_266 = temp_v0;
         gSaveContext.save.saveInfo.playerData.tatlTimer = 0;
+    }
+
+    // BEN: the story's hints come back. A few minutes after she last had one ready (heard or not), she calls again,
+    // instead of the twenty minutes the game waits for its own.
+    if ((Ben_GetHintTextId(play) != 0) && (gSaveContext.save.saveInfo.playerData.tatlTimer >= BEN_TATL_HINT_AGAIN)) {
+        gSaveContext.save.saveInfo.playerData.tatlTimer = 600;
     }
 
     if ((player->tatlTextId == 0) && (player->focusActor == NULL)) {

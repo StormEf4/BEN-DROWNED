@@ -106,7 +106,7 @@ s32 Ben_TryStartDayFour(PlayState* play) {
     return true;
 }
 
-s32 Ben_GetDirector(s16 sceneId) {
+static s32 Ben_GetStoryDirector(s16 sceneId) {
     if (BEN_BOOT_SAVE && Ben_IsBootFile()) {
         return (sceneId == SCENE_F40) ? BEN_ACTOR_BOOT : -1;
     }
@@ -236,6 +236,58 @@ s32 Ben_GetDirector(s16 sceneId) {
         default:
             return -1;
     }
+}
+
+/**
+ * Places nothing should wander into: the boss lairs, the Moon and Majora's lair, and the scenes the game only uses
+ * for cutscenes.
+ */
+static s32 Ben_IsQuietScene(s16 sceneId) {
+    switch (sceneId) {
+        case SCENE_SPOT00:
+        case SCENE_OPENINGDAN:
+        case SCENE_MITURIN_BS:
+        case SCENE_HAKUGIN_BS:
+        case SCENE_SEA_BS:
+        case SCENE_INISIE_BS:
+        case SCENE_SOUGEN:
+        case SCENE_LAST_BS:
+        case SCENE_LAST_DEKU:
+        case SCENE_LAST_GORON:
+        case SCENE_LAST_ZORA:
+        case SCENE_LAST_LINK:
+            return true;
+
+        default:
+            return false;
+    }
+}
+
+/**
+ * Everywhere the story has nothing waiting. In Session 1, wherever there are people, one of them may stop and stare
+ * (and on the first night, whisper). From Session 3 on, the rest of Termina is a little wrong too.
+ */
+static s32 Ben_GetTerminaDirector(s16 sceneId) {
+    if ((BEN_BOOT_SAVE && Ben_IsBootFile()) || Ben_IsQuietScene(sceneId)) {
+        return -1;
+    }
+    if (Ben_GetSession() == BEN_SESSION_SOMETHING_WRONG) {
+        return ((Ben_GetDayFour() == BEN_DAY_FOUR_NOT_YET) &&
+                (INV_CONTENT(ITEM_OCARINA_OF_TIME) == ITEM_OCARINA_OF_TIME))
+                   ? BEN_ACTOR_WRONG
+                   : -1;
+    }
+    return BEN_ACTOR_TERMINA;
+}
+
+s32 Ben_GetDirector(s16 sceneId) {
+    s32 director;
+
+    if (gSaveContext.gameMode != GAMEMODE_NORMAL) {
+        return -1; // the title screen's own scenes
+    }
+    director = Ben_GetStoryDirector(sceneId);
+    return (director >= 0) ? director : Ben_GetTerminaDirector(sceneId);
 }
 
 void Ben_AdvanceSession(PlayState* play, s32 session) {

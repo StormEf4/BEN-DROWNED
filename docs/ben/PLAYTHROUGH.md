@@ -8,15 +8,20 @@ it's written to the cartridge right away, so turning the game off doesn't undo i
 If you can't reach a session's ending (it needs an item you don't have, say), **the ending comes to you**: after
 enough sightings, the next one is the ending.
 
+**The start.** A new file skips the vanilla intro: you step out of the Clock Tower into South Clock Town on the
+first morning, human, with the ocarina. A few seconds later Tatl speaks up on her own: three days and then the moon,
+"...Right?", and *"If you don't know where to go, listen for me, and press [C-Up]. I'll know."* That's the whole tutorial.
+
 **Finding the way.** Tatl knows where the story wants you, and she doesn't like it. When she starts flashing, press
 C-up: every step of the story has a line from her that points the way without spelling it out (the Song of Double
 Time's notes, the Laundry Pool, the swamp, Darmani's grave, the open sea, the tower at midnight). From Session 3 on,
-every one of them ends in the Salesman's laugh. In Session 1 a townsperson whispers the 4th-day rumor too.
+every one of them ends in the Salesman's laugh. The game's Tatl goes quiet for twenty minutes after a
+hint; for the story's she calls again after four, so it's never far off when you're lost. In Session 1 a townsperson whispers the 4th-day rumor too.
 
 | Session | Where | What happens | How it ends |
 |---|---|---|---|
 | 0 **BOOT** | File select, Stone Tower | On a blank cartridge, slot 1 already holds a file called **BEN**. Open it: Stone Tower an hour before the moon falls, a garbled "St o n e" box, the statue, then the game gives out. | Back to the title screen. Erase BEN or use slot 2. |
-| 1 **Something's wrong** | Clock Town | Once the first cycle's done, the town is almost normal. Now and then somebody stops dead and stares at you a beat too long. The first night you walk up to somebody, they turn and whisper: *"They say there's a fourth day... They say a boy found it. He never came home."* | Playing the Song of Double Time on the final night, and once more. |
+| 1 **Something's wrong** | Clock Town (and anywhere with people) | Tatl's opening lines, then the town is almost normal. Now and then somebody stops dead and stares at you a beat too long, in Clock Town or wherever you've wandered. The first night you walk up to somebody, they turn and whisper: *"They say there's a fourth day... They say a boy found it. He never came home."* | Playing the Song of Double Time on the final night, and once more. |
 | 2 **day four** | Clock Town | The demo (DEMO.md): the 4th day, the empty town, the Laundry Pool, Link burning. | The Song of Time, and "YOU SHOULDN'T HAVE DONE THAT." |
 | 3 **BEN** | South Clock Town → Termina Field → Southern Swamp → Deku Palace | A white flash and you're a **Deku scrub** at dawn. The camera hangs low and crooked; when it rights itself the **Happy Mask Salesman** is behind you and knows. A cut to Termina Field, where his theme plays slowed and low. From now on **every Tatl line ends in his laugh**. Go back into the **Clock Tower** and he says it again, the line from the start of the game: *"You've met with a terrible fate, haven't you?"* The swamp and the palace are silent, and the palace is empty. | It's waiting in the **Deku King's chamber**. Walk up to it or stare and the game gives out. The file select now reads **DROWNED** (your file) and **BEN** (the other slot, if it was empty). |
 | 4 **Cold** | Mountain Village, the paths, Snowhead, Goron Village | South Clock Town is closed: a laugh and a white flash put you back in the snow. **Blizzard whiteouts**: the screen goes white, and when it clears the statue is standing in front of you. | **Darmani's grave** in the Goron Graveyard, or after 7 sightings. There are two statues. The other one is Darmani. |
@@ -31,6 +36,21 @@ every one of them ends in the Salesman's laugh. In Session 1 a townsperson whisp
   when you play it, it heard, and you hear it coming.
 - **Erase the BEN file** at the file select and he laughs.
 - Flashing can be turned off with the builder's **Screen flashes** option (`BEN_FLASHES`).
+
+### Termina, a little wrong (Session 3 on)
+
+Everywhere the story isn't (the rest of Termina, inside and out, but never the boss rooms or the Moon), every two to
+four minutes one small thing happens, and then nothing again for a long while. It's a little more often each session.
+
+- Somebody nearby stops what they're doing and stares at you.
+- A figure a long way off at the edge of the screen. Look straight at it and it's gone.
+- From Session 4: stone footsteps behind you, closer each time, and then they stop.
+- His laugh, a long way behind you.
+- The music sags, slower and lower, for a few seconds.
+- From Session 4: the colour drains out of everything for a few seconds.
+
+None of it counts as a sighting, so it never moves the story on, and it stays out of conversations, cutscenes, the
+game's minigames and the Moon Children.
 
 ### Hide and seek (Sessions 4 to 6)
 
@@ -92,10 +112,17 @@ straight away. Played again the same session: *"...not tonight."* Sigils 4 to 7 
 | 22 | Play C-Down, C-Right, C-Left twice: the correct chime, the music fades, grey. The Moon Child appears ahead; walk to it four times; the sigil, the moon's cry, "THE MOON . . ." |
 | 23 | Same session, play it again: "...not tonight." Next session, play it and stand still for the minute: the blinks, the statue closer each time, the sigil under your feet, "THE MOON SEES". Move once to check it catches you |
 | 24 | Next session: footprints walk away from you and wait when you stop; the child at the end turns its head round; the sigil, "THE MOON SEES THE CHILD" |
+| 25 | New file: step out into South Clock Town; about 3 s later Tatl's opening lines play once, with Link held still. Save, reload: they don't play again |
+| 26 | Session 1, outside Clock Town (Termina Field at night, a shop): somebody stares now and then; on the first night the rumor still comes |
+| 27 | Session 3 on, somewhere the story isn't (Milk Road, Romani Ranch, a shop): stand around for 5 minutes and expect one or two small things (a stare, a far figure, a laugh, the music sagging). None during a minigame or a conversation |
+| 28 | Session 4 on: the footsteps and the colour draining show up among them. Leave the scene mid-way: the music and colour are back to normal in the next one |
+| 29 | Tatl's C-up in Session 4 ends "...And if we don't go to him, it'll bring us."; in Session 6, "Let it find you." |
+| 30 | After reading a hint, keep wandering: about 4 minutes later Tatl calls again with the same hint |
 
 ## Tuning
 
-All in `src/overlays/actors/ovl_En_Ben/z_en_ben.c`: `EN_BEN_END_SIGHTINGS` (when the ending comes to you),
+Termina's small scares are `EN_BEN_TERMINA_*` in `z_en_ben_termina.inc` (how often: `_FIRST`, `_EVERY`, `_RANGE`,
+`_SOONER`). The rest are all in `src/overlays/actors/ovl_En_Ben/z_en_ben.c`: `EN_BEN_END_SIGHTINGS` (when the ending comes to you),
 `EN_BEN_DREAM_SIGHTINGS`, `EN_BEN_SEA_DEPTH` (if the open sea never takes you, lower it), `EN_BEN_WHITEOUT_*`, and the
 Salesman scene's `EN_BEN_SALESMAN_*`. Where each session puts you is `Ben_WarpToSession` in `src/ben/ben_core.c`.
 Hide and seek's numbers are `EN_BEN_SEEK_*` in `z_en_ben_seek.inc`; the sigil tasks' are `EN_BEN_CHILD_*`,

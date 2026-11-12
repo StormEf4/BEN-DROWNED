@@ -167,6 +167,7 @@
 #define EN_BEN_WRONG_DIST 600.0f    // only people this close, and on screen
 #define EN_BEN_RUMOR_NEAR 170.0f    // at night, walk this close to somebody and they whisper the rumor
 #define EN_BEN_RUMOR_ALONE 900      // if there's nobody, after this long at night it's whispered from nowhere
+#define EN_BEN_OPENING_DELAY 60     // a new file: how long after you step outside before Tatl speaks (3 s)
 #define EN_BEN_TOWER_DELAY 40       // Session 3, inside the Clock Tower: how long before the Salesman says it
 #define EN_BEN_DARMANI_ANGLE 0x1400 // Session 4's end: Darmani stands this far round from it
 #define EN_BEN_OTHER_CHANCE 0.35f   // Session 6: how often the statue that isn't him stands nearby
@@ -212,6 +213,9 @@ void EnBen_UnhealingInit(EnBen* this, PlayState* play);
 void EnBen_UnhealingDestroy(EnBen* this, PlayState* play);
 void EnBen_Unhealing(EnBen* this, PlayState* play);
 void EnBen_DrawUnhealing(EnBen* this, PlayState* play);
+void EnBen_TerminaInit(EnBen* this, PlayState* play);
+void EnBen_TerminaDestroy(EnBen* this, PlayState* play);
+s32 EnBen_MinigameRunning(void);
 
 ActorProfile En_Ben_Profile = {
     /**/ ACTOR_EN_BEN,
@@ -724,7 +728,14 @@ void EnBen_Init(Actor* thisx, PlayState* play) {
         this->other = NULL;
         this->faceFrames = 0;
         this->timer = EN_BEN_WRONG_FIRST + (s32)Rand_ZeroFloat(EN_BEN_WRONG_RANGE);
+        if ((play->sceneId == SCENE_CLOCKTOWER) && !Ben_GetFlag(BEN_FLAG_OPENED)) {
+            this->directorStep = 3; // a new file's first steps outside: Tatl, before anything else
+        }
         this->actionFunc = EnBen_Wrong;
+        return;
+    }
+    if (this->actor.params == BEN_ACTOR_TERMINA) {
+        EnBen_TerminaInit(this, play); // z_en_ben_termina.inc
         return;
     }
     if ((this->actor.params == BEN_ACTOR_SALESMAN) || (this->actor.params == BEN_ACTOR_WARP) ||
@@ -824,6 +835,10 @@ void EnBen_Destroy(Actor* thisx, PlayState* play) {
 
     if (this->actor.params == BEN_ACTOR_UNHEALING) {
         EnBen_UnhealingDestroy(this, play);
+        return;
+    }
+    if (this->actor.params == BEN_ACTOR_TERMINA) {
+        EnBen_TerminaDestroy(this, play);
         return;
     }
 
@@ -2094,8 +2109,28 @@ Actor* EnBen_FindPerson(PlayState* play, f32 range, s32 onScreen) {
 }
 
 /**
+ * True while one of the game's own minigames (or hide and seek) has the HUD's clock running: nothing of ours gets in
+ * the way of those.
+ */
+s32 EnBen_MinigameRunning(void) {
+    s32 i;
+
+    for (i = 0; i < TIMER_ID_MAX; i++) {
+        if ((i != TIMER_ID_MOON_CRASH) && (i != TIMER_ID_ENV_HAZARD) &&
+            (gSaveContext.timerStates[i] != TIMER_STATE_OFF)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
  * Session 1 (STORY_BIBLE.md §3, tier 1). Clock Town as it should be, except that every so often somebody stops what
- * they're doing and stares at you, a beat too long. And at night, somebody tells you about the fourth day.
+ * they're doing and stares at you, a beat too long. And at night, somebody tells you about the fourth day. The same
+ * goes for anywhere else in Termina with people in it.
+ *
+ * A new file starts here too: the first time you step out into South Clock Town, Tatl says what there is to do (three
+ * days, and then the moon), that there might be more to it, and that C-up will always tell you where to go.
  */
 void EnBen_Wrong(EnBen* this, PlayState* play) {
     Player* player = GET_PLAYER(play);
@@ -2106,10 +2141,11 @@ void EnBen_Wrong(EnBen* this, PlayState* play) {
     switch (this->directorStep) {
         case 0:
             if ((play->msgCtx.msgMode != MSGMODE_NONE) || (play->csCtx.state != CS_STATE_IDLE) ||
-                (play->transitionTrigger != TRANS_TRIGGER_OFF)) {
+                (play->transitionTrigger != TRANS_TRIGGER_OFF) || EnBen_MinigameRunning()) {
                 break;
             }
-            if (!Ben_GetFlag(BEN_FLAG_RUMOR) && gSaveContext.save.isNight) {
+            if (!Ben_GetFlag(BEN_FLAG_RUMOR) && gSaveContext.save.isNight &&
+                (player->actor.bgCheckFlags & BGCHECKFLAG_GROUND)) {
                 person = EnBen_FindPerson(play, EN_BEN_RUMOR_NEAR, false);
                 if ((person != NULL) || (this->directorTimer >= EN_BEN_RUMOR_ALONE)) {
                     // Turns to you, and whispers. If there's nobody, it's whispered anyway.
@@ -2148,11 +2184,26 @@ void EnBen_Wrong(EnBen* this, PlayState* play) {
             break;
 
         case 2: // the rumor
+        case 4: // the opening
             if (Message_GetState(&play->msgCtx) == TEXT_STATE_CLOSING) {
                 Player_SetCsAction(play, &this->actor, PLAYER_CSACTION_END);
                 this->other = NULL;
                 this->directorStep = 0;
             }
+            break;
+
+        case 3: // a new file: once you're outside and free, Tatl
+            if ((this->directorTimer < EN_BEN_OPENING_DELAY) || (play->msgCtx.msgMode != MSGMODE_NONE) ||
+                (play->csCtx.state != CS_STATE_IDLE) || (play->transitionTrigger != TRANS_TRIGGER_OFF) ||
+                (play->transitionMode != TRANS_MODE_OFF) ||
+                (player->stateFlags1 & (PLAYER_STATE1_TALKING | PLAYER_STATE1_20000000)) ||
+                (player->csAction != PLAYER_CSACTION_NONE) || !(player->actor.bgCheckFlags & BGCHECKFLAG_GROUND)) {
+                break;
+            }
+            Ben_SetFlag(BEN_FLAG_OPENED, true); // saved with the file, the next time it's saved
+            Player_SetCsActionWithHaltedActors(play, &this->actor, PLAYER_CSACTION_WAIT);
+            Message_StartTextbox(play, BEN_TEXT_OPENING, NULL);
+            this->directorStep = 4;
             break;
 
         default:
@@ -2203,6 +2254,7 @@ void EnBen_TowerScene(EnBen* this, PlayState* play) {
 // Not named .c: tools/format.py runs clang-tidy on every src/**/*.c on its own, and these only make sense inside here.
 #include "z_en_ben_seek.inc"
 #include "z_en_ben_children.inc"
+#include "z_en_ben_termina.inc"
 
 void EnBen_Update(Actor* thisx, PlayState* play) {
     EnBen* this = (EnBen*)thisx;
@@ -2225,7 +2277,7 @@ void EnBen_Update(Actor* thisx, PlayState* play) {
         this->actionFunc(this, play);
         return;
     }
-    if (this->actor.params == BEN_ACTOR_WRONG) {
+    if ((this->actor.params == BEN_ACTOR_WRONG) || (this->actor.params == BEN_ACTOR_TERMINA)) {
         this->actionFunc(this, play);
         return;
     }

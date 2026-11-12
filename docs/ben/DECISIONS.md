@@ -21,6 +21,7 @@ A running log of choices we make together. Newest at the bottom of each section.
 | D13 | 2026-10-08 | **Start the Phase 0.3 spike now**, ahead of your first build | Ready to test the moment the toolchain works |
 | D14 | 2026-10-08 | **`./ben` is the only build interface.** One-command setup (`windows/BEN-Setup.ps1` on Windows), fingerprinted steps so updates redo only what's stale, and the decomp's make flags hidden. Its commands stay the same for every future build | Your request: a friendlier setup that keeps working as the project grows |
 | D15 | 2026-10-10 | **Skip the intro during development** (`BEN_SKIP_INTRO` in `include/ben/ben.h`). New files start at the South Clock Town door after the dawn card, as human Link with the D6 kit. It gets turned off when the BOOT and Session 1 content replaces the vanilla intro | Faster testing; your request |
+| D16 | 2026-11-12 | **The skipped intro is the real start.** `BEN_SKIP_INTRO` stays on: a new file steps out into South Clock Town with the ocarina, and Tatl's opening lines (`BEN_TEXT_OPENING`) say what there is to do, hint at a fourth day, and teach that C-up always knows where to go. From Session 3 every scene the story doesn't use gets the Termina director (small, rare, uncounted scares) | You asked for a proper start, a clear way forward, and more horror across Termina without overdoing it |
 
 ## Open questions
 

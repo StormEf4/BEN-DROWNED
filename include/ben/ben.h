@@ -17,7 +17,7 @@
 #define BEN_SPIKE_STATUE 1 // Phase 0.3: spawn the stalker statue in South Clock Town
 #endif
 #ifndef BEN_SKIP_INTRO
-#define BEN_SKIP_INTRO 1 // Dev: new files skip the intro and start in South Clock Town (set to 0 to restore it)
+#define BEN_SKIP_INTRO 1 // New files skip the vanilla intro: South Clock Town, the ocarina, Tatl (DECISIONS D16)
 #endif
 #ifndef BEN_DEMO_TEASER
 #define BEN_DEMO_TEASER 1 // Demo: the "day four" session (empty Clock Town, the statue, the Song of Time line)
@@ -58,6 +58,8 @@
 #define BEN_TEXT_DONT_MOVE 0x4D22 // the Moon Child: stand still with us
 #define BEN_TEXT_NOT_YET 0x4D23   // the Song of Unhealing, played when there's nothing for it this session
 #define BEN_TEXT_SIGIL_1 0x4D24   // the phrase so far, as each sigil is stamped (one message per sigil)
+/* The way in */
+#define BEN_TEXT_OPENING 0x4D30 // Tatl, the first time a new file steps out into South Clock Town
 
 /* En_Ben params */
 #define BEN_ACTOR_STATUE 0   // the stalker statue
@@ -70,6 +72,7 @@
 #define BEN_ACTOR_WRONG 7 // Session 1: Clock Town, a little wrong. People stare, and one of them whispers
 #define BEN_ACTOR_TOWER 8 // Session 3: inside the Clock Tower, the Salesman says it again
 #define BEN_ACTOR_UNHEALING 9 // the Song of Unhealing was played here: the Moon Children answer (Ben_UpdateSongs)
+#define BEN_ACTOR_TERMINA 10  // from Session 3, everywhere the story isn't: now and then, one small wrong thing
 
 /* Which En_Ben (by params) the story puts in this scene right now, or -1 for none. Spawned by Play_Init. */
 s32 Ben_GetDirector(s16 sceneId);
@@ -118,6 +121,7 @@ void Sram_BenEndSessionBen(struct PlayState* play);
 /* Story flags En_Ben keeps (the rest are private to ben_core.c) */
 #define BEN_FLAG_RUMOR (1 << 4)   // Session 1: you've been told about the 4th day
 #define BEN_FLAG_HEALING (1 << 5) // it's told you the Song of Healing doesn't work on it, this session
+#define BEN_FLAG_OPENED (1 << 6)  // Tatl has said her opening lines on this file
 s32 Ben_GetFlag(u8 flag);
 void Ben_SetFlag(u8 flag, s32 on);
 
@@ -145,6 +149,7 @@ s32 Ben_HasPlayedSeek(void);
 void Ben_SetPlayedSeek(void);
 
 /* Tatl's C-up hint for where the story is, or 0 for her own (hooked into QuestHint_GetTatlTextId). */
+#define BEN_TATL_HINT_AGAIN (3000 + 4800) // she has the hint ready again 4 minutes after the last time (not 20)
 u16 Ben_GetHintTextId(struct PlayState* play);
 /* True if an 8-character file name is "BEN" (file select). */
 s32 Ben_IsBenName(const char* name);

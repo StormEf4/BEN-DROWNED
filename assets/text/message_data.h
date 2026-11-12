@@ -195,7 +195,9 @@ HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
 "The Gorons had a hero." "\n"
 "Darmani. Nobody could heal him." BOX_BREAK
 "They buried him past the frozen" "\n"
-"lake. He wants to see you."
+"lake. He wants to see you." BOX_BREAK
+"...And if we don't go to him," "\n"
+"it'll bring us."
 )
 )
 
@@ -217,9 +219,9 @@ MSG(
 HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
 "Every time you see it, you" "\n"
 "forget which way is which." BOX_BREAK
-"So stop looking." BOX_BREAK
-"...No. Keep looking." "\n"
-"It wants you to see."
+"Don't run from it." "\n"
+"Let it find you." BOX_BREAK
+"...It wants you to see."
 )
 )
 
@@ -304,6 +306,26 @@ HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
 COLOR_RED "THE MOON SEES THE CHILD" COLOR_DEFAULT BOX_BREAK
 ". . . ." BOX_BREAK
 "The rest of us are further in."
+)
+)
+
+// BEN_TEXT_OPENING: Tatl, the first time a new file steps out into South Clock Town. What there is to do, that there
+// might be more to it, and that C-up always knows where to go.
+DEFINE_MESSAGE(0x4D30, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+"...Hey. " DELAY(0x000A) "HEY." BOX_BREAK
+"You've been standing here" "\n"
+"staring at that clock for ages." BOX_BREAK
+"We got your ocarina back." "\n"
+"Three days, and then the moon" "\n"
+"falls. That's all there is." BOX_BREAK
+DELAY(0x0014) "...Right?" BOX_BREAK
+"If you don't know where to go," "\n"
+"listen for me, and press " COLOR_YELLOW "[C-Up]" COLOR_DEFAULT "." "\n"
+"I'll know." BOX_BREAK
+DELAY(0x0014) "I always know." "\n"
+"I don't know how."
 )
 )
 
