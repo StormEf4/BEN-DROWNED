@@ -6,7 +6,8 @@
 //
 // Build options: every entry in `Options` with an OptKey is written as `./ben config OPT_<KEY> 0|1` before a build,
 // which `ben` turns into -DBEN_<KEY>=0|1 (see include/ben/ben.h). To add a ROM option later, add a #ifndef-guarded
-// BEN_<KEY> switch to ben.h and one line to `Options` below.
+// BEN_<KEY> switch to ben.h and one line to `Options` below. An option given an OffLabel is shown as a choice of two
+// (OffLabel, or Label) instead of a checkbox, like the story's: the Jadusable Experience or the Expanded Horror.
 //
 // Built by .github/workflows/builder.yml (csc on Windows); it also compiles with Mono's mcs for a quick check:
 //   cd windows/builder && mcs -target:winexe -r:System.Windows.Forms.dll -r:System.Drawing.dll -win32icon:ben.ico \
@@ -37,7 +38,11 @@ namespace BenDrowned
         public string Label;
         public string Hint;
         public bool Default;
-        public CheckBox Box;
+        public CheckBox Box;      // whether it's on; a choice's isn't shown, its two buttons set it
+        public string OffLabel;   // when set, a choice of two: OffLabel (off) or Label (on)
+        public string OffHint;
+        public RadioButton OffChoice;
+        public RadioButton OnChoice;
 
         public BuildOption(string key, string optKey, string label, string hint, bool def)
         {
@@ -46,6 +51,14 @@ namespace BenDrowned
             Label = label;
             Hint = hint;
             Default = def;
+        }
+
+        public BuildOption(string key, string optKey, string offLabel, string offHint, string label, string hint,
+                           bool def)
+            : this(key, optKey, label, hint, def)
+        {
+            OffLabel = offLabel;
+            OffHint = offHint;
         }
     }
 
@@ -272,6 +285,11 @@ namespace BenDrowned
 
         readonly List<BuildOption> Options = new List<BuildOption>
         {
+            new BuildOption("expanded", "EXPANDED",
+                            "The Jadusable Experience", "BEN's story as it was first told, and nothing else.",
+                            "The Expanded Horror",
+                            "The same story, with Termina going wrong around it and visitors from other legends.",
+                            true),
             new BuildOption("skipIntro", "SKIP_INTRO", "Skip the intro",
                             "New files start in South Clock Town as human Link. Handy for testing.", true),
             new BuildOption("flashes", "FLASHES", "Screen flashes",
@@ -312,8 +330,8 @@ namespace BenDrowned
             BackColor = ColBack;
             ForeColor = ColText;
             Font = new Font("Segoe UI", 9.75f);
-            ClientSize = new Size(620, 800);
-            MinimumSize = new Size(560, 760);
+            ClientSize = new Size(620, 890);
+            MinimumSize = new Size(560, 850);
             StartPosition = FormStartPosition.CenterScreen;
             DoubleBuffered = true;
             SetStyle(ControlStyles.ResizeRedraw, true);
@@ -483,6 +501,10 @@ namespace BenDrowned
             });
             int y = 34;
             foreach (var option in Options) {
+                if (option.OffLabel != null) {
+                    y = AddChoice(optionsBox, option, y);
+                    continue;
+                }
                 option.Box = new CheckBox {
                     Text = option.Label,
                     Checked = GetBool(option.Key, option.Default),
@@ -570,6 +592,56 @@ namespace BenDrowned
                 header, dropPanel, romStatus, optionsBox, buildButton, playButton, folderButton, statusLabel, progress,
                 logBox,
             });
+        }
+
+        // A choice of two (an option with an OffLabel): two buttons in a panel of their own, each with its hint under it,
+        // and a line under them. Returns where the next option goes.
+        int AddChoice(Panel optionsBox, BuildOption option, int y)
+        {
+            var opt = option;
+            var panel = new Panel {
+                BackColor = Color.Transparent,
+                Location = new Point(0, y),
+                Size = new Size(578, 100),
+            };
+            opt.Box = new CheckBox { Checked = GetBool(opt.Key, opt.Default), Visible = false };
+            opt.OffChoice = MakeChoice(opt.OffLabel, !opt.Box.Checked, 0);
+            opt.OnChoice = MakeChoice(opt.Label, opt.Box.Checked, 46);
+            panel.Controls.Add(opt.OffChoice);
+            panel.Controls.Add(opt.OnChoice);
+            panel.Controls.Add(new Label { Text = opt.OffHint, ForeColor = ColDim, AutoSize = true,
+                                           Location = new Point(32, 22) });
+            panel.Controls.Add(new Label { Text = opt.Hint, ForeColor = ColDim, AutoSize = true,
+                                           Location = new Point(32, 68) });
+            panel.Paint += (s, e) => {
+                using (var pen = new Pen(ColPurple)) {
+                    e.Graphics.DrawLine(pen, 14, panel.Height - 6, panel.Width - 14, panel.Height - 6);
+                }
+            };
+            opt.OnChoice.CheckedChanged += delegate {
+                opt.Box.Checked = opt.OnChoice.Checked;
+                settings[opt.Key] = opt.Box.Checked ? "1" : "0";
+                SaveSettings();
+            };
+            optionsBox.Controls.Add(panel);
+            return y + panel.Height + 4;
+        }
+
+        RadioButton MakeChoice(string text, bool isChecked, int y)
+        {
+            var choice = new RadioButton {
+                Text = text,
+                Checked = isChecked,
+                ForeColor = ColText,
+                Font = new Font(Font, FontStyle.Bold),
+                FlatStyle = FlatStyle.Flat,
+                AutoSize = true,
+                Location = new Point(14, y),
+            };
+            choice.FlatAppearance.BorderColor = ColPurple;
+            choice.FlatAppearance.CheckedBackColor = ColAccent;
+            choice.FlatAppearance.MouseOverBackColor = ColPanelHot;
+            return choice;
         }
 
         bool MouseOverDrop()
@@ -966,6 +1038,10 @@ namespace BenDrowned
             progress.Running = value;
             foreach (var option in Options) {
                 option.Box.Enabled = !value;
+                if (option.OffLabel != null) {
+                    option.OffChoice.Enabled = !value;
+                    option.OnChoice.Enabled = !value;
+                }
             }
         }
 

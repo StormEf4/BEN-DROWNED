@@ -5159,6 +5159,13 @@ beginseg
 endseg
 
 beginseg
+    name "ovl_En_Ben_Visitor"
+    compress
+    include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Ben_Visitor/z_en_ben_visitor.o"
+    include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Ben_Visitor/ovl_En_Ben_Visitor_reloc.o"
+endseg
+
+beginseg
     name "gameplay_keep"
     compress
     romalign 0x1000

@@ -25,6 +25,10 @@
 #ifndef BEN_FLASHES
 #define BEN_FLASHES 1 // BEN's face and the fake glitches flash on screen for a frame or two (0 for none)
 #endif
+#ifndef BEN_EXPANDED
+#define BEN_EXPANDED \
+    1 // Expanded Horror: Termina's small scares and the visitors from other stories (0: Jadusable only)
+#endif
 #ifndef BEN_BOOT_SAVE
 #define BEN_BOOT_SAVE 1 // Session 0: a blank cartridge already has a file called BEN on it, left at Stone Tower
 #endif
@@ -61,6 +65,8 @@
 /* The way in */
 #define BEN_TEXT_OPENING 0x4D30 // Tatl, the first time a new file steps out into South Clock Town
 #define BEN_TEXT_TATL_1 0x4D31  // Tatl says something she shouldn't, out of nowhere (0x4D31-0x4D34)
+/* Expanded Horror */
+#define BEN_TEXT_SLEEP 0x4D40 // "Go to sleep."
 
 /* En_Ben params */
 #define BEN_ACTOR_STATUE 0   // the stalker statue
@@ -74,6 +80,17 @@
 #define BEN_ACTOR_TOWER 8 // Session 3: inside the Clock Tower, the Salesman says it again
 #define BEN_ACTOR_UNHEALING 9 // the Song of Unhealing was played here: the Moon Children answer (Ben_UpdateSongs)
 #define BEN_ACTOR_TERMINA 10  // from Session 3, everywhere the story isn't: now and then, one small wrong thing
+
+/* En_Ben_Visitor params (Expanded Horror): someone from another story, sent by the Termina director */
+#define BEN_VISITOR_TALL 0  // the Tall Man: don't look at him for long
+#define BEN_VISITOR_SMILE 1 // the Smiling Man: he dances towards you, and you have to get away
+#define BEN_VISITOR_SLEEP 2 // "Go to sleep.": he only moves while the lights are out
+#define BEN_VISITOR_COUNT 3
+
+/* Each visitor comes at most once in a few hours of the game's clock (kept in the code segment, so it holds from
+ * scene to scene; a new cycle starts it again) */
+s32 Ben_VisitorReady(s32 visitor);
+void Ben_VisitorCame(s32 visitor);
 
 /* Which En_Ben (by params) the story puts in this scene right now, or -1 for none. Spawned by Play_Init. */
 s32 Ben_GetDirector(s16 sceneId);

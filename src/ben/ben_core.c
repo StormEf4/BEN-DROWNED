@@ -265,7 +265,8 @@ static s32 Ben_IsQuietScene(s16 sceneId) {
 
 /**
  * Everywhere the story has nothing waiting. In Session 1, wherever there are people, one of them may stop and stare
- * (and on the first night, whisper). From Session 3 on, the rest of Termina is a little wrong too.
+ * (and on the first night, whisper). From Session 3 on, in the Expanded Horror, the rest of Termina is a little wrong
+ * too.
  */
 static s32 Ben_GetTerminaDirector(s16 sceneId) {
     if ((BEN_BOOT_SAVE && Ben_IsBootFile()) || Ben_IsQuietScene(sceneId)) {
@@ -277,7 +278,37 @@ static s32 Ben_GetTerminaDirector(s16 sceneId) {
                    ? BEN_ACTOR_WRONG
                    : -1;
     }
-    return BEN_ACTOR_TERMINA;
+    // The rest of Termina only goes wrong in the Expanded Horror (DECISIONS D17)
+    return BEN_EXPANDED ? BEN_ACTOR_TERMINA : -1;
+}
+
+#define BEN_VISITOR_EVERY (3 * 60) // a visitor comes at most once in this many minutes of the game's clock
+
+static s32 sBenVisitorLast[BEN_VISITOR_COUNT] = { -1, -1, -1 };
+
+/**
+ * The game's clock in minutes since the first dawn. The day changes at 6 AM, not at midnight, so the small hours
+ * count as the night before.
+ */
+static s32 Ben_ClockMinutes(void) {
+    s32 minutes = (s32)TIME_TO_MINUTES_F(CURRENT_TIME);
+
+    if (CURRENT_TIME < CLOCK_TIME(6, 0)) {
+        minutes += 24 * 60;
+    }
+    return (CURRENT_DAY * 24 * 60) + minutes;
+}
+
+s32 Ben_VisitorReady(s32 visitor) {
+    s32 now = Ben_ClockMinutes();
+    s32 last = sBenVisitorLast[visitor];
+
+    // Never yet, or a new cycle (the clock went back), or long enough ago
+    return (last < 0) || (now < last) || ((now - last) >= BEN_VISITOR_EVERY);
+}
+
+void Ben_VisitorCame(s32 visitor) {
+    sBenVisitorLast[visitor] = Ben_ClockMinutes();
 }
 
 s32 Ben_GetDirector(s16 sceneId) {

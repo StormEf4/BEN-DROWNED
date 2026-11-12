@@ -29,6 +29,11 @@
  *  - for a moment Link's legs go the wrong way, the way they do when you look at it at Stone Tower.
  * None of it counts as a sighting, so none of it moves the story on. It keeps out of the way of conversations,
  * cutscenes, the game's minigames and the Moon Children, and it comes a little more often as the story goes on.
+ *
+ * All of this is the Expanded Horror (BEN_EXPANDED, DECISIONS D17): with it off there's no Termina director at all.
+ * It also sends the visitors from other stories (En_Ben_Visitor): once in a while, a little after you arrive
+ * somewhere one of them belongs, one of them comes instead (the Tall Man in the woods and the fields, the Smiling Man
+ * in town at night, "Go to sleep." indoors at night), and nothing else happens while it's here.
  */
 
 #define EN_BEN_TERMINA_FIRST 900           // after you arrive, the first thing is at least this long (45 s)
@@ -71,6 +76,8 @@
 #define EN_BEN_TERMINA_BLINK_DARK 4        // each blink is this long
 #define EN_BEN_TERMINA_BLINK_SHOWN 26      // and it's there this long between them
 #define EN_BEN_TERMINA_WRONG_FRAMES 40     // Link's legs go the wrong way this long (2 s)
+#define EN_BEN_VISITOR_FIRST 400           // a visitor: at least this long after you arrive (20 s)
+#define EN_BEN_VISITOR_RANGE 800           // plus up to this much more (so 20-60 s)
 
 typedef enum EnBenTerminaEvent {
     /*  0 */ EN_BEN_TERMINA_WAIT,
@@ -91,7 +98,8 @@ typedef enum EnBenTerminaEvent {
     /* 15 */ EN_BEN_TERMINA_ALARM,
     /* 16 */ EN_BEN_TERMINA_BEHIND,
     /* 17 */ EN_BEN_TERMINA_BLINK,
-    /* 18 */ EN_BEN_TERMINA_WRONG_WAY
+    /* 18 */ EN_BEN_TERMINA_WRONG_WAY,
+    /* 19 */ EN_BEN_TERMINA_VISITOR // someone from another story is here (this->other)
 } EnBenTerminaEvent;
 
 typedef struct EnBenTerminaLine {
@@ -111,6 +119,47 @@ static EnBenTerminaLine sTerminaEvents[] = {
     { EN_BEN_TERMINA_HEART, BEN_SESSION_COLD },    { EN_BEN_TERMINA_FOG, BEN_SESSION_COLD },
     { EN_BEN_TERMINA_ALARM, BEN_SESSION_DROWNED }, { EN_BEN_TERMINA_BEHIND, BEN_SESSION_DROWNED },
     { EN_BEN_TERMINA_BLINK, BEN_SESSION_DROWNED }, { EN_BEN_TERMINA_WRONG_WAY, BEN_SESSION_STONE },
+};
+
+typedef struct EnBenVisitorLine {
+    /* 0x0 */ s16 sceneId;
+    /* 0x2 */ u8 visitor;   // BEN_VISITOR_*
+    /* 0x3 */ u8 nightOnly; // only between dusk and dawn
+    /* 0x4 */ f32 chance;   // how likely it comes, the one time a scene visit gives it the chance
+} EnBenVisitorLine;
+
+// Where each of them belongs
+static EnBenVisitorLine sVisitors[] = {
+    { SCENE_26SARUNOMORI, BEN_VISITOR_TALL, false, 0.35f }, // the Woods of Mystery
+    { SCENE_00KEIKOKU, BEN_VISITOR_TALL, false, 0.35f },    // Termina Field
+    { SCENE_24KEMONOMITI, BEN_VISITOR_TALL, false, 0.35f }, // the road to the swamp
+    { SCENE_20SICHITAI, BEN_VISITOR_TALL, false, 0.35f },   // the Southern Swamp
+    { SCENE_20SICHITAI2, BEN_VISITOR_TALL, false, 0.35f },  // the Southern Swamp, cleansed
+    { SCENE_21MITURINMAE, BEN_VISITOR_TALL, false, 0.35f }, // Woodfall
+    { SCENE_IKANA, BEN_VISITOR_TALL, false, 0.35f },        // Ikana Canyon
+    { SCENE_IKANAMAE, BEN_VISITOR_TALL, false, 0.35f },     // the road to Ikana
+    { SCENE_F01, BEN_VISITOR_TALL, false, 0.35f },          // Romani Ranch
+    { SCENE_BOTI, BEN_VISITOR_TALL, false, 0.35f },         // the graveyard
+    { SCENE_ROMANYMAE, BEN_VISITOR_TALL, false, 0.2f },     // Milk Road, by day or night
+    { SCENE_ROMANYMAE, BEN_VISITOR_SMILE, true, 0.25f },    // and at night, him too
+    { SCENE_TOWN, BEN_VISITOR_SMILE, true, 0.4f },          // East Clock Town
+    { SCENE_ICHIBA, BEN_VISITOR_SMILE, true, 0.4f },        // West Clock Town
+    { SCENE_BACKTOWN, BEN_VISITOR_SMILE, true, 0.4f },      // North Clock Town
+    { SCENE_CLOCKTOWER, BEN_VISITOR_SMILE, true, 0.4f },    // South Clock Town
+    { SCENE_ALLEY, BEN_VISITOR_SMILE, true, 0.4f },         // the Laundry Pool
+    { SCENE_YADOYA, BEN_VISITOR_SLEEP, true, 0.3f },        // the Stock Pot Inn
+    { SCENE_MILK_BAR, BEN_VISITOR_SLEEP, true, 0.3f },      // the Milk Bar
+    { SCENE_SONCHONOIE, BEN_VISITOR_SLEEP, true, 0.3f },    // the Mayor's Residence
+    { SCENE_AYASHIISHOP, BEN_VISITOR_SLEEP, true, 0.3f },   // the Curiosity Shop
+    { SCENE_8ITEMSHOP, BEN_VISITOR_SLEEP, true, 0.3f },     // the Trading Post
+    { SCENE_OMOYA, BEN_VISITOR_SLEEP, true, 0.3f },         // the ranch house
+    { SCENE_MUSICHOUSE, BEN_VISITOR_SLEEP, true, 0.3f },    // the Music Box House
+    { SCENE_DOUJOU, BEN_VISITOR_SLEEP, true, 0.3f },        // the Swordsman's School
+    { SCENE_POSTHOUSE, BEN_VISITOR_SLEEP, true, 0.3f },     // the Post Office
+    { SCENE_BOMYA, BEN_VISITOR_SLEEP, true, 0.3f },         // the Bomb Shop
+    { SCENE_TAKARAYA, BEN_VISITOR_SLEEP, true, 0.3f },      // the Treasure Chest Shop
+    { SCENE_LABO, BEN_VISITOR_SLEEP, true, 0.3f },          // the Marine Research Lab
+    { SCENE_KAJIYA, BEN_VISITOR_SLEEP, true, 0.3f },        // the Mountain Smithy
 };
 
 s32 EnBen_TerminaWait(void) {
@@ -133,7 +182,51 @@ void EnBen_TerminaInit(EnBen* this, PlayState* play) {
     this->directorTimer = 0;
     this->stepTimer = 0;
     this->timer = EN_BEN_TERMINA_FIRST + (s32)Rand_ZeroFloat(EN_BEN_TERMINA_RANGE);
+    this->visitorTimer = EN_BEN_VISITOR_FIRST + (s32)Rand_ZeroFloat(EN_BEN_VISITOR_RANGE);
+    this->visitorTried = false;
     this->actionFunc = EnBen_Termina;
+}
+
+/**
+ * Whether the visitor that was sent is still here.
+ */
+s32 EnBen_VisitorHere(PlayState* play, Actor* visitor) {
+    Actor* it;
+
+    for (it = play->actorCtx.actorLists[ACTORCAT_PROP].first; it != NULL; it = it->next) {
+        if (it == visitor) {
+            return visitor->update != NULL;
+        }
+    }
+    return false;
+}
+
+/**
+ * Once a scene visit, a little after you arrive: if one of the visitors belongs here at this hour and hasn't been by
+ * for a while, maybe it comes. Returns true if one did.
+ */
+s32 EnBen_TryVisitor(EnBen* this, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+    s32 i;
+
+    for (i = 0; i < ARRAY_COUNT(sVisitors); i++) {
+        EnBenVisitorLine* line = &sVisitors[i];
+
+        if ((line->sceneId != play->sceneId) || (line->nightOnly && !gSaveContext.save.isNight) ||
+            !Ben_VisitorReady(line->visitor) || (Rand_ZeroOne() >= line->chance)) {
+            continue;
+        }
+        this->other = Actor_Spawn(&play->actorCtx, play, ACTOR_EN_BEN_VISITOR, player->actor.world.pos.x,
+                                  player->actor.world.pos.y, player->actor.world.pos.z, 0, 0, 0, line->visitor);
+        if (this->other == NULL) {
+            return false;
+        }
+        Ben_VisitorCame(line->visitor);
+        this->directorStep = EN_BEN_TERMINA_VISITOR;
+        this->directorTimer = 0;
+        return true;
+    }
+    return false;
 }
 
 /**
@@ -455,6 +548,16 @@ void EnBen_Termina(EnBen* this, PlayState* play) {
 
     switch (this->directorStep) {
         case EN_BEN_TERMINA_WAIT:
+            if (!this->visitorTried) {
+                if (this->visitorTimer > 0) {
+                    this->visitorTimer--;
+                } else if (!EnBen_TerminaBusy(this, play)) {
+                    this->visitorTried = true;
+                    if (EnBen_TryVisitor(this, play)) {
+                        return;
+                    }
+                }
+            }
             if (this->timer > 0) {
                 this->timer--;
                 return;
@@ -470,6 +573,12 @@ void EnBen_Termina(EnBen* this, PlayState* play) {
         case EN_BEN_TERMINA_TATL: // Tatl's own conversation
             if (Message_GetState(&play->msgCtx) == TEXT_STATE_CLOSING) {
                 Player_SetCsAction(play, &this->actor, PLAYER_CSACTION_END);
+                EnBen_TerminaEnd(this, play);
+            }
+            return;
+
+        case EN_BEN_TERMINA_VISITOR: // nothing else while it's here, and a long quiet after
+            if (!EnBen_VisitorHere(play, this->other)) {
                 EnBen_TerminaEnd(this, play);
             }
             return;

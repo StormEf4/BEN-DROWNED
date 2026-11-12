@@ -366,6 +366,14 @@ DELAY(0x0014) "...Is it?"
 )
 )
 
+// BEN_TEXT_SLEEP (Expanded Horror): in the dark, his face right in yours
+DEFINE_MESSAGE(0x4D40, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+DELAY(0x0014) COLOR_RED "Go to sleep." COLOR_DEFAULT
+)
+)
+
 /*
  * The following two messages should be kept last and in this order.
  * Message 0xFFFD must be last to not break the message debugger.

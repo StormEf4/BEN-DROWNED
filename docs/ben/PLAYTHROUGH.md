@@ -37,7 +37,16 @@ hint; for the story's she calls again after four, so it's never far off when you
 - **Erase the BEN file** at the file select and he laughs.
 - Flashing can be turned off with the builder's **Screen flashes** option (`BEN_FLASHES`).
 
-### Termina, a little wrong (Session 3 on)
+### Two ways to play
+
+The builder asks which you want (`BEN_EXPANDED`, DECISIONS D17):
+
+- **The Jadusable Experience**: BEN's story as it was first told. Every session, the statue, the scripted scenes, hide
+  and seek and the Song of Unhealing are all there; Termina outside the story stays quiet.
+- **The Expanded Horror** (the default): the same story, plus the two sections below, *Termina, a little wrong* and
+  *Visitors from other stories*.
+
+### Termina, a little wrong (Session 3 on, Expanded Horror)
 
 Everywhere the story isn't (the rest of Termina, inside and out, but never the boss rooms or the Moon), every two to
 four minutes one small thing happens, never the same one twice running, and then nothing again for a long while. It's
@@ -53,6 +62,18 @@ a little more often each session, and more kinds of thing become possible as the
 None of it counts as a sighting, so it never moves the story on, and it stays out of conversations, cutscenes, the
 game's minigames and the Moon Children. Anything it changes (the clock, the music, the colour, the stick) is put back
 when it's over or when you leave.
+
+### Visitors from other stories (Session 3 on, Expanded Horror)
+
+Sometimes, 20 to 60 seconds after you arrive somewhere one of them belongs, someone who isn't BEN comes instead of the
+small scares above. They're never named. Each comes at most once every three hours of the game's clock, none of them
+can kill Link, and leaving the area always ends it (the screen, the lights and the music go back to normal).
+
+| Who | Where | What to do |
+|---|---|---|
+| **The Tall Man**: twice Link's height, a black suit, no face | The woods and the fields, any time: Termina Field, the Woods of Mystery, the road to the swamp, the swamp, Woodfall, Milk Road, Romani Ranch, the road to Ikana, Ikana Canyon, the graveyard | Looking at him fills the screen with static (it flickers only with Screen flashes on), faster the closer he is, and the music stops. Look away and he's somewhere else, closer. If the static fills the screen, or you stare at him up close, he has you: you see what's on his back, then black, and you're back at the way in, a heart down. Glance, look away, keep moving; after 90 seconds he's gone the next time you look away. |
+| **The Smiling Man**: thin, a dark suit, a grin far too wide | Clock Town's streets, the Laundry Pool and Milk Road, at night | He dances towards you, slowly while you watch, fast while you don't. Get far enough away, or out of his sight for 5 seconds, and his smile drops and he walks off. If he reaches you: his face in yours, black, two hearts. |
+| **"Go to sleep."**: a white hoodie, a knife, a face that's always there | Inside at night: the inn, the Milk Bar, the Mayor's, the shops, the ranch house, the Music Box House, the dojo, the Post Office, the lab, the smithy | The lights go out and come back, again and again, the light shorter each time. He only moves in the dark, and in the dark his face is the only thing you can see. Leave the room. If he reaches you: *"Go to sleep."*, black, an hour gone (never across dawn or on the final night), a heart down. After 75 seconds, the lights come back and he isn't there. |
 
 ### Hide and seek (Sessions 4 to 6)
 
@@ -123,11 +144,19 @@ straight away. Played again the same session: *"...not tonight."* Sigils 4 to 7 
 | 31 | Session 3: over a long stretch somewhere quiet, expect the crowd turning, the clock stopping (the HUD clock freezes), a Tatl line ending in the laugh, the faint backwards song |
 | 32 | Session 5: turn round now and then; sometimes it's right behind you and vanishes with a laugh. With Screen flashes off, the blink never happens |
 | 33 | Session 6: once in a while the stick is backwards for two seconds, then normal again; leaving the scene mid-way, it's normal in the next |
+| 34 | Build with **The Jadusable Experience**: from Session 3, nowhere outside the story has small scares or visitors; the story itself plays the same |
+| 35 | Expanded Horror, Session 3, Termina Field: within a minute or so of arriving the Tall Man is sometimes behind you. Looking at him brings static; looking away, he's closer. Let the static fill up: black, back at the entrance, a heart down |
+| 36 | The Tall Man again: glance and look away for 90 s; he goes, the static and music come back. Leave the field mid-way: the next area is normal |
+| 37 | Expanded Horror, Session 3, East Clock Town at night: the Smiling Man dances towards you; run until he's far, or break his line of sight: he frowns and walks off. Let him reach you: black, two hearts, never lethal on low health |
+| 38 | Expanded Horror, Session 3, inside the Milk Bar or a shop at night: the lights go out and come back; he only moves in the dark, his face bright. Let him reach you: "Go to sleep.", black, an hour later on the clock, a heart down. Walk out mid-way: the next area's lights are normal |
+| 39 | A visitor doesn't come back to the same kind of place for three game hours, and none appears during a conversation or a minigame |
 
 ## Tuning
 
 Termina's small scares are `EN_BEN_TERMINA_*` in `z_en_ben_termina.inc` (how often: `_FIRST`, `_EVERY`, `_RANGE`,
-`_SOONER`). The rest are all in `src/overlays/actors/ovl_En_Ben/z_en_ben.c`: `EN_BEN_END_SIGHTINGS` (when the ending comes to you),
+`_SOONER`); where the visitors come and how likely, its `sVisitors` table and `EN_BEN_VISITOR_*`, and how often each
+can come, `BEN_VISITOR_EVERY` in `src/ben/ben_core.c`. What the visitors do is `TALL_*`, `SMILE_*` and `SLEEP_*` in
+`src/overlays/actors/ovl_En_Ben_Visitor/z_en_ben_visitor.c`. The rest are all in `src/overlays/actors/ovl_En_Ben/z_en_ben.c`: `EN_BEN_END_SIGHTINGS` (when the ending comes to you),
 `EN_BEN_DREAM_SIGHTINGS`, `EN_BEN_SEA_DEPTH` (if the open sea never takes you, lower it), `EN_BEN_WHITEOUT_*`, and the
 Salesman scene's `EN_BEN_SALESMAN_*`. Where each session puts you is `Ben_WarpToSession` in `src/ben/ben_core.c`.
 Hide and seek's numbers are `EN_BEN_SEEK_*` in `z_en_ben_seek.inc`; the sigil tasks' are `EN_BEN_CHILD_*`,
@@ -139,3 +168,6 @@ The Moon Child, the sigil and the footprints are built in Python with the model 
 project (`tools/ben/modelkit.py`): edit `tools/ben/gen_ben_models.py` and run it, never the generated
 `z_en_ben_models.inc.c`. `tools/ben/preview_model.py` renders one to a PNG without the game, for example
 `python3 tools/ben/preview_model.py src/overlays/actors/ovl_En_Ben/z_en_ben_models.inc.c child.png sMoonChildBodyDL "sMoonChildHeadDL@0,3200,0,0,0,0,1"`.
+The visitors are `tools/ben/gen_ben_visitors.py`, written to
+`src/overlays/actors/ovl_En_Ben_Visitor/z_en_ben_visitor_models.inc.c` the same way. They're an actor of their own
+(`ACTOR_EN_BEN_VISITOR`), so their models are in memory only while one of them is here.
