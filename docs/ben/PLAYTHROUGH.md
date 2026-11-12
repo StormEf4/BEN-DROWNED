@@ -98,8 +98,8 @@ straight away. Played again the same session: *"...not tonight."* Sigils 4 to 7 
 All in `src/overlays/actors/ovl_En_Ben/z_en_ben.c`: `EN_BEN_END_SIGHTINGS` (when the ending comes to you),
 `EN_BEN_DREAM_SIGHTINGS`, `EN_BEN_SEA_DEPTH` (if the open sea never takes you, lower it), `EN_BEN_WHITEOUT_*`, and the
 Salesman scene's `EN_BEN_SALESMAN_*`. Where each session puts you is `Ben_WarpToSession` in `src/ben/ben_core.c`.
-Hide and seek's numbers are `EN_BEN_SEEK_*` in `z_en_ben_seek.inc.c`; the sigil tasks' are `EN_BEN_CHILD_*`,
-`EN_BEN_STILL_*` and `EN_BEN_FEET_*` in `z_en_ben_children.inc.c`.
+Hide and seek's numbers are `EN_BEN_SEEK_*` in `z_en_ben_seek.inc`; the sigil tasks' are `EN_BEN_CHILD_*`,
+`EN_BEN_STILL_*` and `EN_BEN_FEET_*` in `z_en_ben_children.inc`.
 
 ## Models
 

@@ -713,7 +713,7 @@ void EnBen_Init(Actor* thisx, PlayState* play) {
         return;
     }
     if (this->actor.params == BEN_ACTOR_UNHEALING) {
-        EnBen_UnhealingInit(this, play); // the Song of Unhealing was played here (z_en_ben_children.inc.c)
+        EnBen_UnhealingInit(this, play); // the Song of Unhealing was played here (z_en_ben_children.inc)
         return;
     }
     if (this->actor.params == BEN_ACTOR_WRONG) {
@@ -962,7 +962,7 @@ void EnBen_Lurk(EnBen* this, PlayState* play) {
         return;
     }
     if (EnBen_TrySeek(this, play)) {
-        return; // "Let's play hide and seek." (z_en_ben_seek.inc.c)
+        return; // "Let's play hide and seek." (z_en_ben_seek.inc)
     }
     if ((Ben_GetSession() == BEN_SESSION_COLD) && !this->inWhiteout) {
         // Session 4: the snow comes in first, and when it clears, it's there.
@@ -2005,7 +2005,7 @@ void EnBen_CheckSongs(EnBen* this, PlayState* play) {
 
 /**
  * "That song doesn't work on me." Then it plays your song back to you, backwards: the Song of Unhealing
- * (z_en_ben_children.inc.c). Then it's gone, laughing.
+ * (z_en_ben_children.inc). Then it's gone, laughing.
  */
 void EnBen_HealingReply(EnBen* this, PlayState* play) {
     this->directorTimer++;
@@ -2200,8 +2200,9 @@ void EnBen_TowerScene(EnBen* this, PlayState* play) {
     }
 }
 
-#include "z_en_ben_seek.inc.c"
-#include "z_en_ben_children.inc.c"
+// Not named .c: tools/format.py runs clang-tidy on every src/**/*.c on its own, and these only make sense inside here.
+#include "z_en_ben_seek.inc"
+#include "z_en_ben_children.inc"
 
 void EnBen_Update(Actor* thisx, PlayState* play) {
     EnBen* this = (EnBen*)thisx;
