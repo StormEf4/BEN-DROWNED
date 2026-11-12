@@ -274,6 +274,8 @@ namespace BenDrowned
         {
             new BuildOption("skipIntro", "SKIP_INTRO", "Skip the intro",
                             "New files start in South Clock Town as human Link. Handy for testing.", true),
+            new BuildOption("flashes", "FLASHES", "Screen flashes",
+                            "BEN's face and fake glitches flash on screen for a frame or two. Untick if flashing bothers you.", true),
             new BuildOption("makePatch", null, "Also make a shareable patch (.bps)",
                             "For sending to friends. They apply it to their own ROM.", false),
             new BuildOption("openFolder", null, "Open the folder when it's done", null, true),

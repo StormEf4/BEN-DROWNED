@@ -102,6 +102,146 @@ DELAY(0x0028) "I'm glad you did that."
 )
 )
 
+// BEN_TEXT_RUMOR: Session 1, a townsperson at night, turned to face you a moment too long (STORY_BIBLE.md §3)
+DEFINE_MESSAGE(0x4D09, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+"...Have you heard?" BOX_BREAK
+"On the last night, when the song" "\n"
+"that hurries time won't hurry" "\n"
+"it any more..." BOX_BREAK
+"...you play it once more." BOX_BREAK
+"They say there's a fourth day." "\n"
+"They say a boy found it." BOX_BREAK
+DELAY(0x0014) "He never came home."
+)
+)
+
+// BEN_TEXT_HEALING: the statue, the one time you play it the Song of Healing
+DEFINE_MESSAGE(0x4D0A, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+COLOR_RED "That song doesn't work on me." COLOR_DEFAULT
+)
+)
+
+// BEN_TEXT_HINT_DOUBLE_TIME: Tatl, Session 1 (how to find the 4th day)
+DEFINE_MESSAGE(0x4D10, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+"Everyone's whispering about a" "\n"
+"fourth day. It's stupid. Right?" BOX_BREAK
+"They say on the last night you" "\n"
+"play the Song of Time with every" "\n"
+"note twice..." BOX_BREAK
+COLOR_LIGHTBLUE "[C-Right][C-Right][A][A][C-Down][C-Down]" COLOR_DEFAULT BOX_BREAK
+"...and when it won't go any" "\n"
+"further, you play it again." BOX_BREAK
+"Don't. ...Okay?"
+)
+)
+
+// BEN_TEXT_HINT_WATER: Tatl, the 4th day (the Laundry Pool)
+DEFINE_MESSAGE(0x4D11, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+"Where did everybody go?" BOX_BREAK
+"That thing keeps following us." "\n"
+"It doesn't walk. It's just..." "\n"
+"closer." BOX_BREAK
+"Maybe it can't follow us into" "\n"
+"the water. The Laundry Pool..."
+)
+)
+
+// BEN_TEXT_HINT_DONT_LOOK: Tatl, the 4th day, after the Laundry Pool
+DEFINE_MESSAGE(0x4D12, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+"It's right behind us." BOX_BREAK
+"Don't look at it." BOX_BREAK
+COLOR_RED "DON'T LOOK AT IT." COLOR_DEFAULT
+)
+)
+
+// BEN_TEXT_HINT_GO_BACK: Tatl, the 4th day, after Link burned
+DEFINE_MESSAGE(0x4D13, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+"We have to go back." BOX_BREAK
+"Play the Song of Time." "\n"
+"Please. Please just make it" "\n"
+"stop."
+)
+)
+
+// BEN_TEXT_HINT_SWAMP: Tatl, Session 3
+DEFINE_MESSAGE(0x4D14, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+"Why are you a Deku again?" BOX_BREAK
+"...South. Past the field, to the" "\n"
+"swamp. The palace." BOX_BREAK
+"I don't know how I know that." "\n"
+"The King's waiting for you."
+)
+)
+
+// BEN_TEXT_HINT_GRAVE: Tatl, Session 4
+DEFINE_MESSAGE(0x4D15, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+"It's so cold up here." BOX_BREAK
+"The Gorons had a hero." "\n"
+"Darmani. Nobody could heal him." BOX_BREAK
+"They buried him past the frozen" "\n"
+"lake. He wants to see you."
+)
+)
+
+// BEN_TEXT_HINT_SEA: Tatl, Session 5
+DEFINE_MESSAGE(0x4D16, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+"The sea's so calm today." BOX_BREAK
+"Swim out. Where it's deep." "\n"
+"Further than that." BOX_BREAK
+"It's waiting out there." "\n"
+"It's always been waiting there."
+)
+)
+
+// BEN_TEXT_HINT_STONE: Tatl, Session 6
+DEFINE_MESSAGE(0x4D17, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+"Every time you see it, you" "\n"
+"forget which way is which." BOX_BREAK
+"So stop looking." BOX_BREAK
+"...No. Keep looking." "\n"
+"It wants you to see."
+)
+)
+
+// BEN_TEXT_HINT_TOWER: Tatl, Session 7
+DEFINE_MESSAGE(0x4D18, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+"The tower opens at midnight." BOX_BREAK
+"He's up there." BOX_BREAK
+COLOR_RED "He wants to play." COLOR_DEFAULT
+)
+)
+
+// BEN_TEXT_HINT_BOOT: Tatl, on BEN's own file
+DEFINE_MESSAGE(0x4D19, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+"w h o" BOX_BREAK
+"a r e   y o u"
+)
+)
+
 /*
  * The following two messages should be kept last and in this order.
  * Message 0xFFFD must be last to not break the message debugger.

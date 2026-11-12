@@ -55,7 +55,12 @@ typedef struct EnBen {
     /* 0x2A4 */ Actor* other;      // scripted scenes: someone else in them (the Salesman)
     /* 0x2A8 */ s16 whiteFrames;   // Session 4: frames left of a whiteout
     /* 0x2AA */ s16 watchFrames;   // Session 7: frames you've watched it without it moving
-    /* 0x2AC */ u8 inWhiteout;     // Session 4: it's coming in this whiteout
-} EnBen;                           // size = 0x2B0
+    /* 0x2AC */ u8 inWhiteout;     // Session 4: it's coming in this whiteout (or, after the Elegy, in plain view)
+    /* 0x2AD */ u8 songLatch;      // the ocarina song just played has been noticed
+    /* 0x2AE */ s16 faceFrames;    // frames left of BEN's face on screen
+    /* 0x2B0 */ s16 glitchFrames;  // frames left of the game seeming to break
+    /* 0x2B2 */ s16 glitchAt;      // while lurking: the timer value at which it breaks, or -1
+    /* 0x2B4 */ u8 songReply;      // a song it's going to answer (EN_BEN_REPLY_*)
+} EnBen;                           // size = 0x2B8
 
 #endif // Z_EN_BEN_H

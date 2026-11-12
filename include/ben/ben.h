@@ -22,6 +22,9 @@
 #ifndef BEN_DEMO_TEASER
 #define BEN_DEMO_TEASER 1 // Demo: the "day four" session (empty Clock Town, the statue, the Song of Time line)
 #endif
+#ifndef BEN_FLASHES
+#define BEN_FLASHES 1 // BEN's face and the fake glitches flash on screen for a frame or two (0 for none)
+#endif
 #ifndef BEN_BOOT_SAVE
 #define BEN_BOOT_SAVE 1 // Session 0: a blank cartridge already has a file called BEN on it, left at Stone Tower
 #endif
@@ -36,6 +39,19 @@
 #define BEN_TEXT_DREAM 0x4D06         // Session 6's end: being made into a statue
 #define BEN_TEXT_LETS_PLAY 0x4D07     // Session 7, on the Clock Tower
 #define BEN_TEXT_COUNTER 0x4D08       // the end: "The counter resets. I'm glad you did that."
+#define BEN_TEXT_RUMOR 0x4D09         // Session 1: a townsperson whispers how to find the 4th day
+#define BEN_TEXT_HEALING 0x4D0A       // the statue, the one time a session you play it the Song of Healing
+/* Tatl's hints, one per step of the story (Ben_GetHintTextId) */
+#define BEN_TEXT_HINT_DOUBLE_TIME 0x4D10
+#define BEN_TEXT_HINT_WATER 0x4D11
+#define BEN_TEXT_HINT_DONT_LOOK 0x4D12
+#define BEN_TEXT_HINT_GO_BACK 0x4D13
+#define BEN_TEXT_HINT_SWAMP 0x4D14
+#define BEN_TEXT_HINT_GRAVE 0x4D15
+#define BEN_TEXT_HINT_SEA 0x4D16
+#define BEN_TEXT_HINT_STONE 0x4D17
+#define BEN_TEXT_HINT_TOWER 0x4D18
+#define BEN_TEXT_HINT_BOOT 0x4D19
 
 /* En_Ben params */
 #define BEN_ACTOR_STATUE 0   // the stalker statue
@@ -43,8 +59,10 @@
 #define BEN_ACTOR_BOOT 2     // BEN's own file at Stone Tower: the statue, and the game giving out
 #define BEN_ACTOR_SALESMAN 3 // Session 3: forced Deku form, a strange camera, the Salesman, the cut to Termina Field
 #define BEN_ACTOR_FINALE 4   // a session's end: it waits somewhere, and when you reach it the session is over
-#define BEN_ACTOR_WARP 5 // Sessions 4-6: South Clock Town is closed. A laugh, a flash, and you're back where he wants
-#define BEN_ACTOR_MOON 6 // Session 5's end, on the Moon: the children's question, then Stone Tower
+#define BEN_ACTOR_WARP 5  // Sessions 4-6: South Clock Town is closed. A laugh, a flash, and you're back where he wants
+#define BEN_ACTOR_MOON 6  // Session 5's end, on the Moon: the children's question, then Stone Tower
+#define BEN_ACTOR_WRONG 7 // Session 1: Clock Town, a little wrong. People stare, and one of them whispers
+#define BEN_ACTOR_TOWER 8 // Session 3: inside the Clock Tower, the Salesman says it again
 
 /* Which En_Ben (by params) the story puts in this scene right now, or -1 for none. Spawned by Play_Init. */
 s32 Ben_GetDirector(s16 sceneId);
@@ -89,6 +107,17 @@ void Ben_BecomeDrowned(void);
 /* ...and saved as if the Song of Time were played, with BEN written into the other slot if it's empty (C15).
  * In z_sram_NES.c. Writes synchronously: the game hangs for a moment, which is the point. */
 void Sram_BenEndSessionBen(struct PlayState* play);
+
+/* Story flags En_Ben keeps (the rest are private to ben_core.c) */
+#define BEN_FLAG_RUMOR (1 << 4)   // Session 1: you've been told about the 4th day
+#define BEN_FLAG_HEALING (1 << 5) // it's told you the Song of Healing doesn't work on it, this session
+s32 Ben_GetFlag(u8 flag);
+void Ben_SetFlag(u8 flag, s32 on);
+
+/* Tatl's C-up hint for where the story is, or 0 for her own (hooked into QuestHint_GetTatlTextId). */
+u16 Ben_GetHintTextId(struct PlayState* play);
+/* True if an 8-character file name is "BEN" (file select). */
+s32 Ben_IsBenName(const char* name);
 
 /* Move the story on to another session and write it to the file right away (just the story: the rest of the save is
  * left as it was last saved), so turning the game off doesn't undo it. */

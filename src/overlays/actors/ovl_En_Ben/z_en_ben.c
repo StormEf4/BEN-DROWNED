@@ -32,6 +32,7 @@
 #include "ben/ben.h"
 #include "assets/objects/gameplay_keep/gameplay_keep.h"
 #include "overlays/actors/ovl_En_Osn/z_en_osn.h"
+#include "z_en_ben_face.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_DRAW_CULLING_DISABLED | ACTOR_FLAG_LOCK_ON_DISABLED)
 
@@ -148,6 +149,27 @@
 #define EN_BEN_LAST_STEP 30       // how often it comes closer, whatever you do
 #define EN_BEN_LAST_NEAR 140.0f   // and how close it gets before the end
 
+#define EN_BEN_FACE_FRAMES 3                   // BEN's face, on screen this long
+#define EN_BEN_GLITCH_FROM BEN_SESSION_DROWNED // from Session 5, the game itself starts to break
+#define EN_BEN_GLITCH_CHANCE 0.3f              // how often a wait has a glitch in it
+#define EN_BEN_GLITCH_FRAMES 6                 // and how long it lasts
+#define EN_BEN_GLITCH_FACE_CHANCE 0.4f         // how often BEN's face is in it
+#define EN_BEN_REPLY_HEALING 1                 // the Song of Healing: it doesn't work on him
+#define EN_BEN_REPLY_ELEGY 2                   // the Elegy of Emptiness: it makes statues, and one of them is him
+#define EN_BEN_ELEGY_DELAY 50                  // after the Elegy, how long before he's standing with your shells
+
+#define EN_BEN_WRONG_FIRST 600      // Session 1: the first stare is at least this long after you arrive (30 s)
+#define EN_BEN_WRONG_EVERY 1200     // then at least this long between them (60 s)
+#define EN_BEN_WRONG_RANGE 900      // plus up to this much
+#define EN_BEN_WRONG_STARE 70       // how long somebody stares at you, frozen
+#define EN_BEN_WRONG_DIST 600.0f    // only people this close, and on screen
+#define EN_BEN_RUMOR_NEAR 170.0f    // at night, walk this close to somebody and they whisper the rumor
+#define EN_BEN_RUMOR_ALONE 900      // if there's nobody, after this long at night it's whispered from nowhere
+#define EN_BEN_TOWER_DELAY 40       // Session 3, inside the Clock Tower: how long before the Salesman says it
+#define EN_BEN_DARMANI_ANGLE 0x1400 // Session 4's end: Darmani stands this far round from it
+#define EN_BEN_OTHER_CHANCE 0.35f   // Session 6: how often the statue that isn't him stands nearby
+#define EN_BEN_OTHER_ANGLE 0x0E00   // and how far round
+
 #define EN_BEN_REWOUND_TEMPO_SCALE 45
 #define EN_BEN_REWOUND_FREQ_SCALE 650
 
@@ -177,6 +199,9 @@ void EnBen_Dream(EnBen* this, PlayState* play);
 void EnBen_LastGame(EnBen* this, PlayState* play);
 s32 EnBen_EndComes(EnBen* this, PlayState* play);
 s32 EnBen_TryPlaceInWhiteout(EnBen* this, PlayState* play);
+void EnBen_Wrong(EnBen* this, PlayState* play);
+void EnBen_TowerScene(EnBen* this, PlayState* play);
+void EnBen_HealingReply(EnBen* this, PlayState* play);
 
 ActorProfile En_Ben_Profile = {
     /**/ ACTOR_EN_BEN,
@@ -471,7 +496,23 @@ s32 EnBen_TryAppear(EnBen* this, PlayState* play) {
             this->kind = EN_BEN_SIGHTING_CREEP;
         }
     }
-    return EnBen_TryPlaceSighting(this, play);
+    if (!EnBen_TryPlaceSighting(this, play)) {
+        return false;
+    }
+    if ((Ben_GetSession() == BEN_SESSION_STONE) && (this->kind == EN_BEN_SIGHTING_STILL) &&
+        (Rand_ZeroOne() < EN_BEN_OTHER_CHANCE)) {
+        // Another one, a little way off, facing away from you. It isn't him (STORY_BIBLE.md M3).
+        Player* player = GET_PLAYER(play);
+        s16 yaw = Math_Vec3f_Yaw(&player->actor.world.pos, &this->actor.world.pos) + EN_BEN_OTHER_ANGLE;
+
+        if (EnBen_FindSpot(play, player, yaw,
+                           Math_Vec3f_DistXZ(&player->actor.world.pos, &this->actor.world.pos) * 1.15f,
+                           &this->trail[0])) {
+            this->trailYaw[0] = Math_Vec3f_Yaw(&this->trail[0], &player->actor.world.pos) + 0x8000;
+            this->trailCount = 1;
+        }
+    }
+    return true;
 }
 
 /**
@@ -623,6 +664,10 @@ void EnBen_Vanish(EnBen* this) {
     this->glimpseAt = ((Ben_GetSightings() >= EN_BEN_GLIMPSE_FROM) && (Rand_ZeroOne() < EN_BEN_GLIMPSE_CHANCE))
                           ? (this->timer / 2)
                           : -1;
+    this->glitchAt =
+        (BEN_FLASHES && (Ben_GetSession() >= EN_BEN_GLITCH_FROM) && (Rand_ZeroOne() < EN_BEN_GLITCH_CHANCE))
+            ? ((this->timer * 3) / 4)
+            : -1;
     this->actionFunc = EnBen_Lurk;
 }
 
@@ -650,17 +695,30 @@ void EnBen_Init(Actor* thisx, PlayState* play) {
         this->actionFunc = EnBen_LairWait;
         return;
     }
+    if (this->actor.params == BEN_ACTOR_WRONG) {
+        // Session 1: nothing you'd notice, at first. The music plays as normal.
+        this->isHidden = true;
+        this->directorStep = 0;
+        this->directorTimer = 0;
+        this->other = NULL;
+        this->faceFrames = 0;
+        this->timer = EN_BEN_WRONG_FIRST + (s32)Rand_ZeroFloat(EN_BEN_WRONG_RANGE);
+        this->actionFunc = EnBen_Wrong;
+        return;
+    }
     if ((this->actor.params == BEN_ACTOR_SALESMAN) || (this->actor.params == BEN_ACTOR_WARP) ||
-        (this->actor.params == BEN_ACTOR_MOON)) {
-        // Directors with no body. Dawn, or the Moon, and no music at all.
+        (this->actor.params == BEN_ACTOR_MOON) || (this->actor.params == BEN_ACTOR_TOWER)) {
+        // Directors with no body. Dawn, or the Moon, or the Clock Tower, and no music at all.
         play->sceneSequences.seqId = NA_BGM_NO_MUSIC;
         this->isHidden = true;
         this->directorStep = 0;
         this->directorTimer = 0;
         this->other = NULL;
+        this->faceFrames = 0;
         this->actionFunc = (this->actor.params == BEN_ACTOR_SALESMAN) ? EnBen_SalesmanScene
                            : (this->actor.params == BEN_ACTOR_WARP)   ? EnBen_WarpAway
-                                                                      : EnBen_MoonScene;
+                           : (this->actor.params == BEN_ACTOR_MOON)   ? EnBen_MoonScene
+                                                                      : EnBen_TowerScene;
         return;
     }
 
@@ -686,6 +744,11 @@ void EnBen_Init(Actor* thisx, PlayState* play) {
     this->whiteFrames = 0;
     this->watchFrames = 0;
     this->inWhiteout = false;
+    this->songLatch = false;
+    this->songReply = 0;
+    this->faceFrames = 0;
+    this->glitchFrames = 0;
+    this->glitchAt = -1;
     this->isStaring = false;
     if ((Ben_GetSession() == BEN_SESSION_FREE) && (gSaveContext.save.day < 3)) {
         // Session 7 is the Night of the Final Day, however you got here. The counter is wrong.
@@ -737,7 +800,8 @@ void EnBen_Destroy(Actor* thisx, PlayState* play) {
     Play_FillScreen(play, false, 0, 0, 0, 0);
 
     if ((this->actor.params == BEN_ACTOR_LAIR) || (this->actor.params == BEN_ACTOR_WARP) ||
-        (this->actor.params == BEN_ACTOR_MOON)) {
+        (this->actor.params == BEN_ACTOR_MOON) || (this->actor.params == BEN_ACTOR_WRONG) ||
+        (this->actor.params == BEN_ACTOR_TOWER)) {
         return;
     }
     if (this->actor.params == BEN_ACTOR_SALESMAN) {
@@ -850,6 +914,9 @@ void EnBen_Lurk(EnBen* this, PlayState* play) {
     }
 
     if (this->timer > 0) {
+        if (this->timer == this->glitchAt) {
+            this->glitchFrames = EN_BEN_GLITCH_FRAMES;
+        }
         if ((this->timer == this->glimpseAt) && EnBen_TryPlaceGlimpse(this, play)) {
             this->isHidden = false;
             this->glimpseFrames = EN_BEN_GLIMPSE_FRAMES;
@@ -1302,6 +1369,14 @@ void EnBen_Finale(EnBen* this, PlayState* play) {
             for (i = 0; i < ARRAY_COUNT(sScales); i++) {
                 if (EnBen_FindSpot(play, player, player->actor.shape.rot.y, EN_BEN_FINALE_DIST * sScales[i], &pos)) {
                     EnBen_PlaceAt(this, play, &pos);
+                    this->trailCount = 0;
+                    if ((Ben_GetSession() == BEN_SESSION_COLD) &&
+                        EnBen_FindSpot(play, player, player->actor.shape.rot.y + EN_BEN_DARMANI_ANGLE,
+                                       EN_BEN_FINALE_DIST * sScales[i], &this->trail[0])) {
+                        // Darmani. Nobody could heal him either, and now he's one too.
+                        this->trailYaw[0] = Math_Vec3f_Yaw(&this->trail[0], &player->actor.world.pos);
+                        this->trailCount = 1;
+                    }
                     this->isHidden = false;
                     this->kind = EN_BEN_SIGHTING_STILL;
                     this->seenFrames = 0;
@@ -1544,9 +1619,11 @@ void EnBen_Drowning(EnBen* this, PlayState* play) {
 
         case 1:
             if (this->directorTimer == EN_BEN_SEA_FLASH) {
-                Play_FillScreen(play, true, 140, 0, 0, 255);
+                // His face, out of nowhere (STORY_BIBLE.md C18)
+                Play_FillScreen(play, true, BEN_FLASHES ? 0 : 140, 0, 0, 255);
+                this->faceFrames = EN_BEN_FACE_FRAMES + 1;
                 Audio_PlaySfx(EN_BEN_LAUGH_SFX);
-            } else if (this->directorTimer == (EN_BEN_SEA_FLASH + 3)) {
+            } else if (this->directorTimer == (EN_BEN_SEA_FLASH + EN_BEN_FACE_FRAMES)) {
                 Play_FillScreen(play, false, 0, 0, 0, 0);
             } else if (this->directorTimer >= EN_BEN_SEA_LEAVE) {
                 this->directorStep = 2;
@@ -1670,6 +1747,7 @@ void EnBen_Dream(EnBen* this, PlayState* play) {
         case 2:
             if (Message_GetState(&play->msgCtx) == TEXT_STATE_CLOSING) {
                 Play_FillScreen(play, true, 0, 0, 0, 255);
+                this->faceFrames = EN_BEN_FACE_FRAMES + 1; // and for a moment, you're looking at his face
                 Audio_PlaySfx(EN_BEN_LAUGH_SFX);
                 this->directorStep = 3;
                 this->directorTimer = 0;
@@ -1742,6 +1820,9 @@ void EnBen_LastGame(EnBen* this, PlayState* play) {
             break;
 
         case 2:
+            if (this->directorTimer == (EN_BEN_FINALE_GIVE_OUT / 2)) {
+                this->faceFrames = EN_BEN_FACE_FRAMES + 1;
+            }
             if (this->directorTimer >= EN_BEN_FINALE_GIVE_OUT) {
                 Message_StartTextbox(play, BEN_TEXT_COUNTER, NULL);
                 this->directorStep = 3;
@@ -1817,6 +1898,242 @@ void EnBen_BootDirector(EnBen* this, PlayState* play) {
     }
 }
 
+/**
+ * From Session 5: now and then the game seems to break for a moment. The screen fills with a wrong color, the music
+ * lurches, and sometimes his face is there.
+ */
+void EnBen_UpdateGlitch(EnBen* this, PlayState* play) {
+    if (this->glitchFrames <= 0) {
+        return;
+    }
+    this->glitchFrames--;
+    if (this->glitchFrames == 0) {
+        Play_FillScreen(play, false, 0, 0, 0, 0);
+        this->musicWarped = false; // put the music back how it was
+        return;
+    }
+    Play_FillScreen(play, true, (s32)Rand_ZeroFloat(90.0f), (s32)Rand_ZeroFloat(40.0f), (s32)Rand_ZeroFloat(60.0f),
+                    120 + (s32)Rand_ZeroFloat(135.0f));
+    SEQCMD_SET_SEQPLAYER_FREQ(SEQ_PLAYER_BGM_MAIN, 0, 300 + (s32)Rand_ZeroFloat(1400.0f));
+    if ((this->glitchFrames == (EN_BEN_GLITCH_FRAMES / 2)) && (Rand_ZeroOne() < EN_BEN_GLITCH_FACE_CHANCE)) {
+        this->faceFrames = 2;
+    }
+}
+
+/**
+ * Two songs it has something to say about. Noticed while you play; answered once the ocarina's put away.
+ */
+void EnBen_CheckSongs(EnBen* this, PlayState* play) {
+    if (this->actor.params != BEN_ACTOR_STATUE) {
+        return;
+    }
+
+    if (play->msgCtx.ocarinaMode == OCARINA_MODE_EVENT) {
+        if (!this->songLatch) {
+            this->songLatch = true;
+            if (play->msgCtx.lastPlayedSong == OCARINA_SONG_HEALING) {
+                this->songReply = EN_BEN_REPLY_HEALING;
+            } else if (play->msgCtx.lastPlayedSong == OCARINA_SONG_ELEGY) {
+                this->songReply = EN_BEN_REPLY_ELEGY;
+            }
+        }
+        return;
+    }
+    this->songLatch = false;
+
+    if ((this->songReply == 0) || (play->msgCtx.msgMode != MSGMODE_NONE)) {
+        return;
+    }
+    if (this->songReply == EN_BEN_REPLY_HEALING) {
+        if ((this->actionFunc == EnBen_Stand) && this->isNoticed && !this->isHidden && !Ben_GetFlag(BEN_FLAG_HEALING)) {
+            // You played it the song that heals the dead. Once a session, it answers.
+            Ben_SetFlag(BEN_FLAG_HEALING, true);
+            EnBen_SetStaring(this, true);
+            Player_SetCsActionWithHaltedActors(play, &this->actor, PLAYER_CSACTION_WAIT);
+            Message_StartTextbox(play, BEN_TEXT_HEALING, &this->actor);
+            this->actionFunc = EnBen_HealingReply;
+        } else if (this->actionFunc == EnBen_Lurk) {
+            // It heard. It comes right now, and you hear it coming.
+            this->timer = EN_BEN_STEPS_BEFORE;
+            this->withSteps = true;
+            this->stepTimer = 0;
+            this->glimpseAt = -1;
+        }
+    } else if ((this->songReply == EN_BEN_REPLY_ELEGY) && (this->actionFunc == EnBen_Lurk) &&
+               (Ben_GetSession() != BEN_SESSION_COLD)) {
+        // The song that makes statues. When you turn round, one of them isn't yours.
+        this->inWhiteout = true; // placed in plain view, like when the snow clears
+        this->timer = EN_BEN_ELEGY_DELAY;
+        this->glimpseAt = -1;
+        this->withSteps = false;
+    }
+    this->songReply = 0;
+}
+
+/**
+ * "That song doesn't work on me." Then it's gone, laughing.
+ */
+void EnBen_HealingReply(EnBen* this, PlayState* play) {
+    if (Message_GetState(&play->msgCtx) == TEXT_STATE_CLOSING) {
+        Player_SetCsAction(play, &this->actor, PLAYER_CSACTION_END);
+        Play_EnableMotionBlur(EN_BEN_BLUR_ALPHA);
+        this->blurFrames = EN_BEN_BLUR_FRAMES;
+        Audio_PlaySfx(EN_BEN_LAUGH_SFX);
+        EnBen_Vanish(this);
+    }
+}
+
+/**
+ * True if `actor` is still in the scene (people come and go; a pointer to one that left is no good).
+ */
+s32 EnBen_IsStillHere(PlayState* play, Actor* actor) {
+    Actor* it;
+
+    if (actor == NULL) {
+        return false;
+    }
+    for (it = play->actorCtx.actorLists[ACTORCAT_NPC].first; it != NULL; it = it->next) {
+        if (it == actor) {
+            return actor->update != NULL;
+        }
+    }
+    return false;
+}
+
+/**
+ * The nearest person within `range`, optionally only one that's on screen.
+ */
+Actor* EnBen_FindPerson(PlayState* play, f32 range, s32 onScreen) {
+    Player* player = GET_PLAYER(play);
+    Actor* best = NULL;
+    f32 bestDist = range;
+    Actor* it;
+    Vec3f head;
+
+    for (it = play->actorCtx.actorLists[ACTORCAT_NPC].first; it != NULL; it = it->next) {
+        f32 dist = Actor_WorldDistXZToActor(&player->actor, it);
+
+        if ((it->update == NULL) || (dist >= bestDist)) {
+            continue;
+        }
+        head = it->world.pos;
+        head.y += 40.0f;
+        if (onScreen && !EnBen_IsPointInFrustum(play, &head)) {
+            continue;
+        }
+        best = it;
+        bestDist = dist;
+    }
+    return best;
+}
+
+/**
+ * Session 1 (STORY_BIBLE.md §3, tier 1). Clock Town as it should be, except that every so often somebody stops what
+ * they're doing and stares at you, a beat too long. And at night, somebody tells you about the fourth day.
+ */
+void EnBen_Wrong(EnBen* this, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+    Actor* person;
+
+    this->directorTimer++;
+
+    switch (this->directorStep) {
+        case 0:
+            if ((play->msgCtx.msgMode != MSGMODE_NONE) || (play->csCtx.state != CS_STATE_IDLE) ||
+                (play->transitionTrigger != TRANS_TRIGGER_OFF)) {
+                break;
+            }
+            if (!Ben_GetFlag(BEN_FLAG_RUMOR) && gSaveContext.save.isNight) {
+                person = EnBen_FindPerson(play, EN_BEN_RUMOR_NEAR, false);
+                if ((person != NULL) || (this->directorTimer >= EN_BEN_RUMOR_ALONE)) {
+                    // Turns to you, and whispers. If there's nobody, it's whispered anyway.
+                    Ben_SetFlag(BEN_FLAG_RUMOR, true);
+                    this->other = person;
+                    if (person != NULL) {
+                        person->shape.rot.y = person->world.rot.y = Actor_WorldYawTowardActor(person, &player->actor);
+                    }
+                    Player_SetCsActionWithHaltedActors(play, &this->actor, PLAYER_CSACTION_WAIT);
+                    Message_StartTextbox(play, BEN_TEXT_RUMOR, person);
+                    this->directorStep = 2;
+                    break;
+                }
+            }
+            this->timer--;
+            if (this->timer <= 0) {
+                person = EnBen_FindPerson(play, EN_BEN_WRONG_DIST, true);
+                this->timer = EN_BEN_WRONG_EVERY + (s32)Rand_ZeroFloat(EN_BEN_WRONG_RANGE);
+                if (person != NULL) {
+                    this->other = person;
+                    this->stareFrames = 0;
+                    this->directorStep = 1;
+                }
+            }
+            break;
+
+        case 1: // somebody stops, and looks at you
+            if (!EnBen_IsStillHere(play, this->other) || (++this->stareFrames >= EN_BEN_WRONG_STARE)) {
+                this->other = NULL;
+                this->directorStep = 0;
+                break;
+            }
+            this->other->shape.rot.y = this->other->world.rot.y =
+                Actor_WorldYawTowardActor(this->other, &player->actor);
+            this->other->freezeTimer = 2;
+            break;
+
+        case 2: // the rumor
+            if (Message_GetState(&play->msgCtx) == TEXT_STATE_CLOSING) {
+                Player_SetCsAction(play, &this->actor, PLAYER_CSACTION_END);
+                this->other = NULL;
+                this->directorStep = 0;
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
+/**
+ * Session 3, inside the Clock Tower (STORY_BIBLE.md C13). The Salesman says it again, the line from the beginning of
+ * the game, as if nothing has happened since. Then he laughs.
+ */
+void EnBen_TowerScene(EnBen* this, PlayState* play) {
+    Actor* it;
+
+    this->directorTimer++;
+
+    switch (this->directorStep) {
+        case 0:
+            if ((this->directorTimer < EN_BEN_TOWER_DELAY) || (play->csCtx.state != CS_STATE_IDLE) ||
+                (play->msgCtx.msgMode != MSGMODE_NONE) || (play->transitionTrigger != TRANS_TRIGGER_OFF)) {
+                break;
+            }
+            this->other = NULL;
+            for (it = play->actorCtx.actorLists[ACTORCAT_NPC].first; it != NULL; it = it->next) {
+                if (it->id == ACTOR_EN_OSN) {
+                    this->other = it;
+                    break;
+                }
+            }
+            Player_SetCsActionWithHaltedActors(play, &this->actor, PLAYER_CSACTION_WAIT);
+            Message_StartTextbox(play, BEN_TEXT_TERRIBLE_FATE, this->other);
+            this->directorStep = 1;
+            break;
+
+        case 1:
+            if (Message_GetState(&play->msgCtx) == TEXT_STATE_CLOSING) {
+                Player_SetCsAction(play, &this->actor, PLAYER_CSACTION_END);
+                Audio_PlaySfx(EN_BEN_LAUGH_SFX);
+                this->directorStep = 2;
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
 void EnBen_Update(Actor* thisx, PlayState* play) {
     EnBen* this = (EnBen*)thisx;
 
@@ -1825,8 +2142,12 @@ void EnBen_Update(Actor* thisx, PlayState* play) {
         this->actionFunc(this, play);
         return;
     }
+    if (this->actor.params == BEN_ACTOR_WRONG) {
+        this->actionFunc(this, play);
+        return;
+    }
     if ((this->actor.params == BEN_ACTOR_SALESMAN) || (this->actor.params == BEN_ACTOR_WARP) ||
-        (this->actor.params == BEN_ACTOR_MOON)) {
+        (this->actor.params == BEN_ACTOR_MOON) || (this->actor.params == BEN_ACTOR_TOWER)) {
         if (AudioSeq_GetActiveSeqId(SEQ_PLAYER_BGM_MAIN) != NA_BGM_DISABLED) {
             SEQCMD_STOP_SEQUENCE(SEQ_PLAYER_BGM_MAIN, 0);
         }
@@ -1848,10 +2169,15 @@ void EnBen_Update(Actor* thisx, PlayState* play) {
     EnBen_CheckDrowning(this, play);
     EnBen_CheckSea(this, play);
     EnBen_RememberPath(this, play);
+    EnBen_CheckSongs(this, play);
+    if (this->faceFrames > 0) {
+        this->faceFrames--;
+    }
 
     this->actionFunc(this, play);
 
     EnBen_UpdateWhiteout(this, play);
+    EnBen_UpdateGlitch(this, play);
     if ((Ben_GetSession() == BEN_SESSION_STONE) && (this->actionFunc == EnBen_Stand)) {
         // Session 6: every time you look at it, Link's legs go the wrong way.
         Ben_SetInputMode((this->isNoticed && !this->isHidden) ? BEN_INPUT_INVERTED : BEN_INPUT_NORMAL);
@@ -1888,10 +2214,38 @@ void EnBen_Update(Actor* thisx, PlayState* play) {
     CollisionCheck_SetOC(play, &play->colChkCtx, &this->collider.base);
 }
 
+/**
+ * BEN's face over the middle of the screen, for a frame or two.
+ */
+void EnBen_DrawFace(EnBen* this, PlayState* play) {
+    s32 half;
+
+    OPEN_DISPS(play->state.gfxCtx);
+
+    Gfx_SetupDL39_Overlay(play->state.gfxCtx);
+    gDPSetCombineMode(OVERLAY_DISP++, G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
+    gDPSetPrimColor(OVERLAY_DISP++, 0, 0, 255, 255, 255, 255);
+    for (half = 0; half < 2; half++) {
+        // Each 64x32 half fits in TMEM on its own; drawn 240 wide and 120 tall.
+        gDPLoadTextureBlock(OVERLAY_DISP++,
+                            (u8*)sBenFaceTex + (half * EN_BEN_FACE_WIDTH * (EN_BEN_FACE_HEIGHT / 2) * 2), G_IM_FMT_RGBA,
+                            G_IM_SIZ_16b, EN_BEN_FACE_WIDTH, EN_BEN_FACE_HEIGHT / 2, 0, G_TX_NOMIRROR | G_TX_CLAMP,
+                            G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+        gSPTextureRectangle(OVERLAY_DISP++, 40 << 2, (half * 120) << 2, 280 << 2, ((half + 1) * 120) << 2,
+                            G_TX_RENDERTILE, 0, 0, (EN_BEN_FACE_WIDTH << 10) / 240,
+                            ((EN_BEN_FACE_HEIGHT / 2) << 10) / 120);
+    }
+
+    CLOSE_DISPS(play->state.gfxCtx);
+}
+
 void EnBen_Draw(Actor* thisx, PlayState* play) {
     EnBen* this = (EnBen*)thisx;
     s32 i;
 
+    if (BEN_FLASHES && (this->faceFrames > 0)) {
+        EnBen_DrawFace(this, play);
+    }
     if (this->isHidden) {
         return;
     }

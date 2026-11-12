@@ -30,14 +30,15 @@ typedef struct BenSave {
 #define BEN_FLAG_WARNED (1 << 1)     // "YOU SHOULDN'T HAVE DONE THAT." has been said since
 #define BEN_FLAG_TRAIL_SEEN (1 << 2) // the line of statues along your path has happened
 #define BEN_FLAG_BOOT_FILE (1 << 3)  // this is BEN's file, the one that was already on the cartridge
+// BEN_FLAG_RUMOR and BEN_FLAG_HEALING are in ben.h, for En_Ben
 
 #define BEN_SAVE ((BenSave*)gSaveContext.save.saveInfo.unk_DF4)
 
-static s32 Ben_GetFlag(u8 flag) {
+s32 Ben_GetFlag(u8 flag) {
     return (BEN_SAVE->flags & flag) != 0;
 }
 
-static void Ben_SetFlag(u8 flag, s32 on) {
+void Ben_SetFlag(u8 flag, s32 on) {
     if (on) {
         BEN_SAVE->flags |= flag;
     } else {
@@ -55,6 +56,7 @@ void Ben_SetSession(s32 session) {
     // Each session starts its stalking over: far away again, and one more line of statues to come.
     BEN_SAVE->sightings = 0;
     Ben_SetFlag(BEN_FLAG_TRAIL_SEEN, false);
+    Ben_SetFlag(BEN_FLAG_HEALING, false); // it can say that once a session
 }
 
 s32 Ben_GetStep(void) {
@@ -110,10 +112,30 @@ s32 Ben_GetDirector(s16 sceneId) {
     }
 
     switch (Ben_GetSession()) {
+        case BEN_SESSION_SOMETHING_WRONG:
+            // Session 1: once you have the ocarina back, Clock Town is a little wrong.
+            if ((Ben_GetDayFour() != BEN_DAY_FOUR_NOT_YET) ||
+                (INV_CONTENT(ITEM_OCARINA_OF_TIME) != ITEM_OCARINA_OF_TIME)) {
+                return -1;
+            }
+            switch (sceneId) {
+                case SCENE_CLOCKTOWER:
+                case SCENE_TOWN:
+                case SCENE_ICHIBA:
+                case SCENE_BACKTOWN:
+                    return BEN_ACTOR_WRONG;
+
+                default:
+                    return -1;
+            }
+
         case BEN_SESSION_BEN:
             switch (sceneId) {
                 case SCENE_CLOCKTOWER:
                     return (Ben_GetStep() == BEN_STEP3_ARRIVE) ? BEN_ACTOR_SALESMAN : -1;
+
+                case SCENE_INSIDETOWER: // Clock Tower: he says it again (STORY_BIBLE.md C13)
+                    return BEN_ACTOR_TOWER;
 
                 case SCENE_00KEIKOKU:    // Termina Field
                 case SCENE_24KEMONOMITI: // Road to Southern Swamp
@@ -247,6 +269,68 @@ void Ben_BecomeBen(void) {
     Ben_SetSession(BEN_SESSION_FREE);
     Ben_SetStep(BEN_STEP7_DONE);
     Ben_SetFlag(BEN_FLAG_BOOT_FILE, true); // from now on it opens at Stone Tower, like his did
+}
+
+s32 Ben_IsBenName(const char* name) {
+    s32 i;
+
+    for (i = 0; i < ARRAY_COUNT(sBenName); i++) {
+        if (name[i] != sBenName[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
+ * Tatl's hint for where the story is (her C-up, the way she nags in the first cycle). 0 for none, which leaves her
+ * vanilla hints alone. Every line points the way without saying it outright.
+ */
+u16 Ben_GetHintTextId(PlayState* play) {
+    if (BEN_BOOT_SAVE && Ben_IsBootFile()) {
+        return BEN_TEXT_HINT_BOOT;
+    }
+    switch (Ben_GetSession()) {
+        case BEN_SESSION_SOMETHING_WRONG:
+            switch (Ben_GetDayFour()) {
+                case BEN_DAY_FOUR_NOT_YET:
+                    // Only once the first cycle's done; until then she has her own job to do.
+                    return (INV_CONTENT(ITEM_OCARINA_OF_TIME) == ITEM_OCARINA_OF_TIME) ? BEN_TEXT_HINT_DOUBLE_TIME : 0;
+
+                case BEN_DAY_FOUR_HAUNTED:
+                    switch (Ben_GetFate()) {
+                        case BEN_FATE_NONE:
+                            return BEN_TEXT_HINT_WATER;
+
+                        case BEN_FATE_DROWNED:
+                            return BEN_TEXT_HINT_DONT_LOOK;
+
+                        default:
+                            return Ben_HasRewound() ? 0 : BEN_TEXT_HINT_GO_BACK;
+                    }
+
+                default:
+                    return 0;
+            }
+
+        case BEN_SESSION_BEN:
+            return (Ben_GetStep() == BEN_STEP3_FIELD) ? BEN_TEXT_HINT_SWAMP : 0;
+
+        case BEN_SESSION_COLD:
+            return BEN_TEXT_HINT_GRAVE;
+
+        case BEN_SESSION_DROWNED:
+            return (Ben_GetStep() == BEN_STEP5_SEA) ? BEN_TEXT_HINT_SEA : 0;
+
+        case BEN_SESSION_STONE:
+            return BEN_TEXT_HINT_STONE;
+
+        case BEN_SESSION_FREE:
+            return (Ben_GetStep() == BEN_STEP7_NIGHT) ? BEN_TEXT_HINT_TOWER : 0;
+
+        default:
+            return 0;
+    }
 }
 
 static s32 sBenInputMode = BEN_INPUT_NORMAL;
