@@ -105,6 +105,12 @@
 #define EN_BEN_BURN_DRAIN_EVERY 2  // while burning, 1/16 of a heart goes every this many frames, on top of the flames
 #define EN_BEN_FATE_DELAY 50       // after the game over, how long before the line appears
 
+#define EN_BEN_BOOT_TEXT_DELAY 60  // BEN's file: how long you stand at Stone Tower before the garbled box
+#define EN_BEN_BOOT_FIRST_LURK 160 // after the box, how long before the statue is somewhere
+#define EN_BEN_BOOT_ROAM 700       // then how long you have before the game gives out (35 s)
+#define EN_BEN_BOOT_GIVE_OUT 50    // and how long it takes to give out
+#define EN_BEN_BOOT_BLUR_ALPHA 235
+
 #define EN_BEN_REWOUND_TEMPO_SCALE 45
 #define EN_BEN_REWOUND_FREQ_SCALE 650
 
@@ -406,7 +412,9 @@ s32 EnBen_TryAppear(EnBen* this, PlayState* play) {
 
     this->kind = EN_BEN_SIGHTING_STILL;
     this->trailCount = 0;
-    if ((Ben_GetFate() == BEN_FATE_NONE) || (Ben_GetFate() == BEN_FATE_DONE)) {
+    if (this->actor.params == BEN_ACTOR_BOOT) {
+        this->kind = EN_BEN_SIGHTING_CREEP; // on its own file it doesn't bother leaving
+    } else if ((Ben_GetFate() == BEN_FATE_NONE) || (Ben_GetFate() == BEN_FATE_DONE)) {
         if ((sightings >= EN_BEN_TRAIL_SIGHTING) && !Ben_HasSeenTrail() && EnBen_TryPlaceTrail(this, play)) {
             this->kind = EN_BEN_SIGHTING_TRAIL;
             return true;
@@ -621,7 +629,8 @@ void EnBen_Init(Actor* thisx, PlayState* play) {
     }
 
     // Spawned during Play_Init, before the scene's music starts. Until you've seen it, there is no music at all.
-    play->sceneSequences.seqId = (Ben_GetSightings() > 0) ? NA_BGM_SONG_OF_HEALING : NA_BGM_NO_MUSIC;
+    play->sceneSequences.seqId =
+        ((Ben_GetSightings() > 0) && (this->actor.params != BEN_ACTOR_BOOT)) ? NA_BGM_SONG_OF_HEALING : NA_BGM_NO_MUSIC;
 
     // The camera isn't set up yet during Play_Init, so nothing is placed until updates start.
     this->isHidden = true;
@@ -633,6 +642,11 @@ void EnBen_Init(Actor* thisx, PlayState* play) {
         this->actionFunc = EnBen_Confront;
     } else if (Ben_GetFate() == BEN_FATE_DROWNED) {
         this->timer = EN_BEN_DROWNED_DELAY;
+        this->actionFunc = EnBen_Lurk;
+    } else if (this->actor.params == BEN_ACTOR_BOOT) {
+        this->directorStep = 0;
+        this->directorTimer = 0;
+        this->timer = EN_BEN_BOOT_TEXT_DELAY + EN_BEN_BOOT_FIRST_LURK;
         this->actionFunc = EnBen_Lurk;
     } else {
         this->timer = EN_BEN_FIRST_LURK_MIN + (s32)Rand_ZeroFloat(EN_BEN_FIRST_LURK_RANGE);
@@ -676,7 +690,7 @@ void EnBen_UpdateMusic(EnBen* this, PlayState* play) {
         this->musicCooldown--;
     }
 
-    if (Ben_GetSightings() == 0) {
+    if ((Ben_GetSightings() == 0) || (this->actor.params == BEN_ACTOR_BOOT)) {
         if ((activeSeqId != NA_BGM_DISABLED) && (this->musicCooldown == 0)) {
             SEQCMD_STOP_SEQUENCE(SEQ_PLAYER_BGM_MAIN, 20);
             this->musicCooldown = EN_BEN_MUSIC_RETRY_FRAMES;
@@ -1018,6 +1032,55 @@ void EnBen_LairWait(EnBen* this, PlayState* play) {
     play->transitionType = TRANS_TYPE_FADE_BLACK_SLOW;
 }
 
+/**
+ * BEN's own file. You're at Stone Tower an hour before the moon falls, with every mask, and something is wrong with
+ * the text. The statue is somewhere, and gets closer whenever you look away. Then the game gives out and you're back
+ * at the title screen.
+ */
+void EnBen_BootDirector(EnBen* this, PlayState* play) {
+    this->directorTimer++;
+
+    switch (this->directorStep) {
+        case 0: // stand there a moment, then the box
+            if ((this->directorTimer >= EN_BEN_BOOT_TEXT_DELAY) && (play->msgCtx.msgMode == MSGMODE_NONE)) {
+                Player_SetCsActionWithHaltedActors(play, &this->actor, PLAYER_CSACTION_WAIT);
+                Message_StartTextbox(play, BEN_TEXT_STONE, NULL);
+                this->directorStep = 1;
+            }
+            break;
+
+        case 1:
+            if (Message_GetState(&play->msgCtx) == TEXT_STATE_CLOSING) {
+                Player_SetCsAction(play, &this->actor, PLAYER_CSACTION_END);
+                this->directorStep = 2;
+                this->directorTimer = 0;
+            }
+            break;
+
+        case 2: // walk around, if you want
+            if (this->directorTimer >= EN_BEN_BOOT_ROAM) {
+                EnBen_SetStaring(this, true);
+                Play_EnableMotionBlur(EN_BEN_BOOT_BLUR_ALPHA);
+                this->blurFrames = 0x7FFF; // Destroy turns it off
+                Audio_PlaySfx(EN_BEN_LAUGH_SFX);
+                Player_SetCsActionWithHaltedActors(play, &this->actor, PLAYER_CSACTION_WAIT);
+                this->directorStep = 3;
+                this->directorTimer = 0;
+            }
+            break;
+
+        case 3: // and it's gone
+            if (this->directorTimer >= EN_BEN_BOOT_GIVE_OUT) {
+                this->directorStep = 4;
+                Ben_CrashToTitle(play);
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
 void EnBen_Update(Actor* thisx, PlayState* play) {
     EnBen* this = (EnBen*)thisx;
 
@@ -1027,8 +1090,14 @@ void EnBen_Update(Actor* thisx, PlayState* play) {
         return;
     }
 
+    if (this->actor.params == BEN_ACTOR_BOOT) {
+        EnBen_BootDirector(this, play);
+    }
+
     // The clock doesn't move on the 4th day.
-    gSaveContext.save.timeSpeedOffset = -(s16)R_TIME_SPEED;
+    if (Ben_IsHauntedScene(play->sceneId)) {
+        gSaveContext.save.timeSpeedOffset = -(s16)R_TIME_SPEED;
+    }
 
     EnBen_UpdateMusic(this, play);
     EnBen_EmptyTown(play);

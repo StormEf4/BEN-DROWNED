@@ -5,39 +5,83 @@
 
 #include "ben/ben.h"
 #include "global.h"
+#include "overlays/gamestates/ovl_opening/z_opening.h"
 
 // "BEN" in the file-select character encoding: 0x0A + n is the nth capital letter, 0x3E is a space.
 static char sBenName[8] = { 0x0B, 0x0E, 0x17, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E };
 
-// Demo teaser state. Lives in the code segment, so it survives the Song of Time's scene reload but not a reboot.
-static u8 sHasRewound = false;
-static u8 sHasWarned = false;
-static u8 sSightings = 0;
-static u8 sHasSeenTrail = false;
-static u8 sDayFour = BEN_DAY_FOUR_NOT_YET;
-static u8 sFate = BEN_FATE_NONE;
+/**
+ * K1 story state. It lives in a block of the save file that vanilla never touches (SaveInfo.unk_DF4, 0x54 bytes):
+ * zeroed on a new file, kept by the Song of Time's cycle reset, and written and checksummed with every owl save and
+ * cycle save. So the story survives turning the game off, the same way your items do.
+ */
+typedef struct BenSave {
+    /* 0x00 */ u8 session;   // BenSession, 0 on a new file (the same as Session 1)
+    /* 0x01 */ u8 dayFour;   // BenDayFour
+    /* 0x02 */ u8 fate;      // BenFate
+    /* 0x03 */ u8 sightings; // times you've noticed the statue
+    /* 0x04 */ u8 flags;     // BEN_FLAG_*
+    /* 0x05 */ u8 step;      // where you are within the current session (each session numbers its own steps)
+} BenSave;
+
+#define BEN_FLAG_REWOUND (1 << 0)    // the Song of Time was played on the 4th day
+#define BEN_FLAG_WARNED (1 << 1)     // "YOU SHOULDN'T HAVE DONE THAT." has been said since
+#define BEN_FLAG_TRAIL_SEEN (1 << 2) // the line of statues along your path has happened
+#define BEN_FLAG_BOOT_FILE (1 << 3)  // this is BEN's file, the one that was already on the cartridge
+
+#define BEN_SAVE ((BenSave*)gSaveContext.save.saveInfo.unk_DF4)
+
+static s32 Ben_GetFlag(u8 flag) {
+    return (BEN_SAVE->flags & flag) != 0;
+}
+
+static void Ben_SetFlag(u8 flag, s32 on) {
+    if (on) {
+        BEN_SAVE->flags |= flag;
+    } else {
+        BEN_SAVE->flags &= ~flag;
+    }
+}
+
+s32 Ben_GetSession(void) {
+    return (BEN_SAVE->session < BEN_SESSION_SOMETHING_WRONG) ? BEN_SESSION_SOMETHING_WRONG : BEN_SAVE->session;
+}
+
+void Ben_SetSession(s32 session) {
+    BEN_SAVE->session = session;
+    BEN_SAVE->step = 0;
+}
+
+s32 Ben_GetStep(void) {
+    return BEN_SAVE->step;
+}
+
+void Ben_SetStep(s32 step) {
+    BEN_SAVE->step = step;
+}
 
 s32 Ben_GetDayFour(void) {
-    return sDayFour;
+    return BEN_SAVE->dayFour;
 }
 
 void Ben_SetDayFour(s32 state) {
-    sDayFour = state;
+    BEN_SAVE->dayFour = state;
 }
 
 s32 Ben_GetFate(void) {
-    return sFate;
+    return BEN_SAVE->fate;
 }
 
 void Ben_SetFate(s32 fate) {
-    sFate = fate;
+    BEN_SAVE->fate = fate;
 }
 
 s32 Ben_TryStartDayFour(PlayState* play) {
-    if (!BEN_DEMO_TEASER || (sDayFour != BEN_DAY_FOUR_NOT_YET)) {
+    if (!BEN_DEMO_TEASER || (Ben_GetSession() != BEN_SESSION_SOMETHING_WRONG) ||
+        (Ben_GetDayFour() != BEN_DAY_FOUR_NOT_YET)) {
         return false;
     }
-    sDayFour = BEN_DAY_FOUR_LAIR;
+    Ben_SetDayFour(BEN_DAY_FOUR_LAIR);
 
     // No "you can't" message. The ocarina just closes and everything slowly goes black.
     Message_CloseTextbox(play);
@@ -50,7 +94,7 @@ s32 Ben_TryStartDayFour(PlayState* play) {
 }
 
 s32 Ben_IsHauntedScene(s16 sceneId) {
-    if (sDayFour != BEN_DAY_FOUR_HAUNTED) {
+    if (Ben_GetDayFour() != BEN_DAY_FOUR_HAUNTED) {
         return false; // until the 4th day, Clock Town is just Clock Town
     }
     switch (sceneId) {
@@ -67,41 +111,92 @@ s32 Ben_IsHauntedScene(s16 sceneId) {
 }
 
 s32 Ben_GetSightings(void) {
-    return sSightings;
+    return BEN_SAVE->sightings;
 }
 
 void Ben_AddSighting(void) {
-    if (sSightings < 255) {
-        sSightings++;
+    if (BEN_SAVE->sightings < 255) {
+        BEN_SAVE->sightings++;
     }
 }
 
 s32 Ben_HasSeenTrail(void) {
-    return sHasSeenTrail;
+    return Ben_GetFlag(BEN_FLAG_TRAIL_SEEN);
 }
 
 void Ben_SetTrailSeen(void) {
-    sHasSeenTrail = true;
+    Ben_SetFlag(BEN_FLAG_TRAIL_SEEN, true);
 }
 
 void Ben_OnSongOfTime(void) {
-    if (sDayFour != BEN_DAY_FOUR_HAUNTED) {
+    if (Ben_GetDayFour() != BEN_DAY_FOUR_HAUNTED) {
         return; // an ordinary reset
     }
-    sHasRewound = true;
-    sHasWarned = false;
+    Ben_SetFlag(BEN_FLAG_REWOUND, true);
+    Ben_SetFlag(BEN_FLAG_WARNED, false);
 }
 
 s32 Ben_HasRewound(void) {
-    return sHasRewound;
+    return Ben_GetFlag(BEN_FLAG_REWOUND);
 }
 
 void Ben_SetWarned(void) {
-    sHasWarned = true;
+    Ben_SetFlag(BEN_FLAG_WARNED, true);
 }
 
 s32 Ben_HasWarned(void) {
-    return sHasWarned;
+    return Ben_GetFlag(BEN_FLAG_WARNED);
+}
+
+#define BEN_BOOT_DAY 3
+#define BEN_BOOT_TIME CLOCK_TIME(5, 0) // an hour before the moon falls
+
+s32 Ben_IsBootFile(void) {
+    return Ben_GetFlag(BEN_FLAG_BOOT_FILE);
+}
+
+void Ben_MakeBootSave(void) {
+    s32 i;
+
+    // Someone got almost to the end: every mask, a full set of hearts.
+    Sram_InitDebugSave();
+    for (i = 0; i < ARRAY_COUNT(gSaveContext.save.saveInfo.playerData.playerName); i++) {
+        gSaveContext.save.saveInfo.playerData.playerName[i] = sBenName[i];
+    }
+    gSaveContext.save.saveInfo.playerData.newf[0] = 'Z';
+    gSaveContext.save.saveInfo.playerData.newf[1] = 'E';
+    gSaveContext.save.saveInfo.playerData.newf[2] = 'L';
+    gSaveContext.save.saveInfo.playerData.newf[3] = 'D';
+    gSaveContext.save.saveInfo.playerData.newf[4] = 'A';
+    gSaveContext.save.saveInfo.playerData.newf[5] = '3';
+    gSaveContext.save.saveInfo.playerData.threeDayResetCount = 23;
+    gSaveContext.save.isFirstCycle = false;
+    gSaveContext.save.playerForm = PLAYER_FORM_HUMAN;
+    gSaveContext.save.day = BEN_BOOT_DAY;
+    gSaveContext.save.time = BEN_BOOT_TIME;
+    gSaveContext.save.isNight = true;
+    Ben_SetFlag(BEN_FLAG_BOOT_FILE, true);
+}
+
+void Ben_OpenBootFile(void) {
+    if (!BEN_BOOT_SAVE || !Ben_IsBootFile()) {
+        return;
+    }
+    // Wherever you left it, it's back where he left it.
+    gSaveContext.save.entrance = ENTRANCE(STONE_TOWER, 3);
+    gSaveContext.nextCutsceneIndex = 0xFFEF;
+    gSaveContext.save.playerForm = PLAYER_FORM_HUMAN;
+    gSaveContext.save.day = BEN_BOOT_DAY;
+    gSaveContext.save.time = BEN_BOOT_TIME;
+    gSaveContext.save.isNight = true;
+}
+
+void Ben_CrashToTitle(PlayState* play) {
+    STOP_GAMESTATE(&play->state);
+    SET_NEXT_GAMESTATE(&play->state, TitleSetup_Init, sizeof(TitleSetupState));
+    Audio_MuteAllSeqExceptSystemAndOcarina(0);
+    gSaveContext.seqId = (u8)NA_BGM_DISABLED;
+    gSaveContext.ambienceId = AMBIENCE_ID_DISABLED;
 }
 
 const char* Ben_GetPlayerName(void) {
@@ -119,13 +214,8 @@ const char* Ben_GetPlayerName(void) {
  * Deku Mask.
  */
 void Ben_ApplyIntroSkip(void) {
-    // A brand new file starts the teaser from the beginning.
-    sHasRewound = false;
-    sHasWarned = false;
-    sSightings = 0;
-    sHasSeenTrail = false;
-    sDayFour = BEN_DAY_FOUR_NOT_YET;
-    sFate = BEN_FATE_NONE;
+    // A brand new file starts the story from the beginning (Sram_ResetSave has already zeroed the block).
+    bzero(BEN_SAVE, sizeof(BenSave));
 
     gSaveContext.save.isFirstCycle = true;
     gSaveContext.save.cutsceneIndex = 0; // no intro cutscene

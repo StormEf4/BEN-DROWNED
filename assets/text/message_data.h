@@ -23,6 +23,18 @@ COLOR_RED "YOU SHOULDN'T HAVE DONE THAT." COLOR_DEFAULT
 )
 )
 
+// BEN_TEXT_STONE: on BEN's own file, at Stone Tower, before anything else happens (STORY_BIBLE.md C3)
+DEFINE_MESSAGE(0x4D02, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+"St  o n e" BOX_BREAK
+"t  t   t  [Z][Z]  o   w e r" "\n"
+"  ...[C-Down]  e e e  [A]" "\n"
+"w   h  e  r  e  .   .   ." BOX_BREAK
+DELAY(0x0028) COLOR_RED "B E N" COLOR_DEFAULT
+)
+)
+
 /*
  * The following two messages should be kept last and in this order.
  * Message 0xFFFD must be last to not break the message debugger.

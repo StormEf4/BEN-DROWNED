@@ -22,18 +22,40 @@
 #ifndef BEN_DEMO_TEASER
 #define BEN_DEMO_TEASER 1 // Demo: the "day four" session (empty Clock Town, the statue, the Song of Time line)
 #endif
+#ifndef BEN_BOOT_SAVE
+#define BEN_BOOT_SAVE 1 // Session 0: a blank cartridge already has a file called BEN on it, left at Stone Tower
+#endif
 
 /* Custom text IDs. Vanilla never reaches 0x4Dxx (credits start at 0x4E20). */
 #define BEN_TEXT_TERRIBLE_FATE 0x4D00
 #define BEN_TEXT_SHOULDNT_HAVE 0x4D01 // "YOU SHOULDN'T HAVE DONE THAT." after the Song of Time
+#define BEN_TEXT_STONE 0x4D02         // the garbled box on BEN's file at Stone Tower
 
 /* En_Ben params */
 #define BEN_ACTOR_STATUE 0 // the stalker statue
 #define BEN_ACTOR_LAIR 1   // invisible director for the 4th-day visit to Majora's lair
+#define BEN_ACTOR_BOOT 2   // BEN's own file at Stone Tower: the statue, and the game giving out
 
 /* Spike audio: Song of Healing slowed and pitched down (the runtime fallback for K7) */
 #define BEN_SPIKE_TEMPO_SCALE 60 // percent of normal tempo
 #define BEN_SPIKE_FREQ_SCALE 750 // 1000 = normal pitch, 500 = one octave down
+
+/* K1: the story, one 3-day cycle per session (STORY_BIBLE.md §3). Saved with the file, so it survives turning the
+ * game off. */
+typedef enum BenSession {
+    /* 1 */ BEN_SESSION_SOMETHING_WRONG = 1, // Clock Town, then "day four" (Sessions 1 and 2)
+    /* 3 */ BEN_SESSION_BEN = 3,             // forced Deku Link, the Salesman, Termina Field, the swamp
+    /* 4 */ BEN_SESSION_COLD,                // Mountain Village, Snowhead, Darmani
+    /* 5 */ BEN_SESSION_DROWNED,             // Great Bay, Mikau, the open sea
+    /* 6 */ BEN_SESSION_STONE,               // Ikana, Stone Tower
+    /* 7 */ BEN_SESSION_FREE                 // the Moon, "The counter resets."
+} BenSession;
+
+s32 Ben_GetSession(void);
+void Ben_SetSession(s32 session); // also sets the step back to 0
+/* Progress within the current session. Each session numbers its own steps. */
+s32 Ben_GetStep(void);
+void Ben_SetStep(s32 step);
 
 /* K2: name shown wherever text uses the player-name control code. Same 8-char encoding as playerName. */
 const char* Ben_GetPlayerName(void);
@@ -81,6 +103,19 @@ s32 Ben_HasRewound(void);
 /* The statue has delivered its "YOU SHOULDN'T HAVE DONE THAT." line since the last rewind. */
 void Ben_SetWarned(void);
 s32 Ben_HasWarned(void);
+
+/* Session 0 (BOOT): the BEN file found on a blank cartridge (STORY_BIBLE.md C3). */
+struct GameState;
+struct SramContext;
+s32 Ben_IsBootFile(void);
+/* Builds BEN's save in gSaveContext: near the end of the game, every mask, Stone Tower on the final morning. */
+void Ben_MakeBootSave(void);
+/* Called when a normal save is loaded. BEN's file always opens at Stone Tower, an hour before the moon falls. */
+void Ben_OpenBootFile(void);
+/* Writes BEN's file into slot 1 if both slots are empty. Returns true if it did (z_sram_NES.c). */
+s32 Sram_BenPlantBootSave(struct GameState* gameState, struct SramContext* sramCtx);
+/* The game gives out: straight back to the title screen, as if the cartridge crashed. */
+void Ben_CrashToTitle(struct PlayState* play);
 
 /* Dev: turn a freshly created save into a post-intro save. Called by Sram_InitSave when BEN_SKIP_INTRO is on. */
 void Ben_ApplyIntroSkip(void);

@@ -49,6 +49,8 @@ typedef struct EnBen {
     /* 0x1C8 */ Vec3f path[EN_BEN_PATH_POINTS];
     /* 0x258 */ Vec3f trail[EN_BEN_TRAIL_COPIES];
     /* 0x294 */ s16 trailYaw[EN_BEN_TRAIL_COPIES];
-} EnBen; // size = 0x2A0
+    /* 0x29E */ s16 directorTimer; // scripted scenes: frames since the current step began
+    /* 0x2A0 */ u8 directorStep;   // scripted scenes: which step of the scene we're on
+} EnBen;                           // size = 0x2A4
 
 #endif // Z_EN_BEN_H

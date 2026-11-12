@@ -1295,6 +1295,7 @@ void Sram_OpenSave(FileSelectState* fileSelect, SramContext* sramCtx) {
             gSaveContext.nextCutsceneIndex = 0;
             gSaveContext.save.playerForm = PLAYER_FORM_HUMAN;
         }
+        Ben_OpenBootFile(); // BEN: BEN's file always opens at Stone Tower on the final morning
     } else {
         gSaveContext.save.entrance = sOwlWarpEntrances[(void)0, gSaveContext.save.owlWarpId];
         if ((gSaveContext.save.entrance == ENTRANCE(SOUTHERN_SWAMP_POISONED, 10)) &&
@@ -1853,6 +1854,34 @@ void Sram_InitSave(FileSelectState* fileSelect2, SramContext* sramCtx) {
 /**
  *  Write the SaveOptions of SaveContext to the save buffer
  */
+/**
+ * BEN: a cartridge with nothing on it already has a file called BEN (STORY_BIBLE.md C3). If both slots are empty,
+ * write BEN's save into slot 1, the same way a new file is written. Erase it and make your own and it stays gone,
+ * unless you erase everything.
+ */
+s32 Sram_BenPlantBootSave(GameState* gameState, SramContext* sramCtx) {
+    FileSelectState* fileSelect = (FileSelectState*)gameState;
+    u16 time = gSaveContext.save.time;
+
+    if (!BEN_BOOT_SAVE || !gSaveContext.flashSaveAvailable || SLOT_OCCUPIED(fileSelect, 0) ||
+        SLOT_OCCUPIED(fileSelect, 1)) {
+        return false;
+    }
+
+    Ben_MakeBootSave();
+    gSaveContext.save.isOwlSave = false;
+    gSaveContext.save.saveInfo.checksum = 0;
+    gSaveContext.save.saveInfo.checksum = Sram_CalcChecksum(&gSaveContext.save, sizeof(Save));
+
+    bzero(sramCtx->saveBuf, SAVE_BUFFER_SIZE);
+    Lib_MemCpy(sramCtx->saveBuf, &gSaveContext.save, sizeof(Save));
+    Lib_MemCpy(&sramCtx->saveBuf[0x2000], &gSaveContext.save, sizeof(Save));
+    Sram_SyncWriteToFlash(sramCtx, gFlashSaveStartPages[0], gFlashSpecialSaveNumPages[0]);
+
+    gSaveContext.save.time = time;
+    return true;
+}
+
 void Sram_WriteSaveOptionsToBuffer(SramContext* sramCtx) {
     if (gSaveContext.flashSaveAvailable) {
         gSaveContext.options.language = LANGUAGE_ENG;
