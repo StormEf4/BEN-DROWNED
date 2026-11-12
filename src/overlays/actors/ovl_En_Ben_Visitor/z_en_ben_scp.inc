@@ -1,7 +1,9 @@
-/*
- * File: z_en_ben_scp.c
- * Overlay: ovl_En_Ben_Scp
- * Description: BEN DROWNED, the Expanded Horror: three of the SCP Foundation's (BEN_EXPANDED; DECISIONS D18).
+/**
+ * BEN DROWNED, the Expanded Horror: three of the SCP Foundation's (BEN_EXPANDED; DECISIONS D18).
+ *
+ * Each has an actor of its own (En_Ben_Scp173, En_Ben_Scp096, En_Ben_Scp106), so only the model of the one that's
+ * here is in memory. Each includes this once, after its models and with EN_BEN_SCP set to its BEN_VISITOR_*, and
+ * defines its profile on the functions here; everything here is static, since all the overlays link into one ELF.
  *
  * Sent by the Termina director (En_Ben, z_en_ben_termina.inc) the way the visitors from other stories are, once in a
  * while, where each belongs; nothing else happens while one is here, and none of it is a sighting. Each keeps its
@@ -92,34 +94,20 @@
 #define OLD_BUBBLE NA_SE_EV_WATER_BUBBLE
 #define OLD_GROAN NA_SE_EN_REDEAD_AIM
 
-#include "z_en_ben_scp_models.inc.c"
 #include "overlays/actors/ovl_En_Ben_Visitor/z_en_ben_visitor_kit.inc"
 
-void EnBenScp_Init(Actor* thisx, PlayState* play);
-void EnBenScp_Destroy(Actor* thisx, PlayState* play);
-void EnBenScp_Update(Actor* thisx, PlayState* play);
-void EnBenScp_Draw(Actor* thisx, PlayState* play);
-
-void EnBenScp_Statue(EnBenVisitor* this, PlayState* play);
-void EnBenScp_StatueCaught(EnBenVisitor* this, PlayState* play);
-void EnBenScp_Shy(EnBenVisitor* this, PlayState* play);
-void EnBenScp_ShyCaught(EnBenVisitor* this, PlayState* play);
-void EnBenScp_OldRise(EnBenVisitor* this, PlayState* play);
-void EnBenScp_OldWalk(EnBenVisitor* this, PlayState* play);
-void EnBenScp_OldSink(EnBenVisitor* this, PlayState* play);
-void EnBenScp_OldCaught(EnBenVisitor* this, PlayState* play);
-
-ActorProfile En_Ben_Scp_Profile = {
-    /**/ ACTOR_EN_BEN_SCP,
-    /**/ ACTORCAT_PROP,
-    /**/ FLAGS,
-    /**/ GAMEPLAY_KEEP,
-    /**/ sizeof(EnBenVisitor),
-    /**/ EnBenScp_Init,
-    /**/ EnBenScp_Destroy,
-    /**/ EnBenScp_Update,
-    /**/ EnBenScp_Draw,
-};
+#if EN_BEN_SCP == BEN_VISITOR_SCULPTURE
+static void EnBenScp_Statue(EnBenVisitor* this, PlayState* play);
+static void EnBenScp_StatueCaught(EnBenVisitor* this, PlayState* play);
+#elif EN_BEN_SCP == BEN_VISITOR_SHY
+static void EnBenScp_Shy(EnBenVisitor* this, PlayState* play);
+static void EnBenScp_ShyCaught(EnBenVisitor* this, PlayState* play);
+#else
+static void EnBenScp_OldRise(EnBenVisitor* this, PlayState* play);
+static void EnBenScp_OldWalk(EnBenVisitor* this, PlayState* play);
+static void EnBenScp_OldSink(EnBenVisitor* this, PlayState* play);
+static void EnBenScp_OldCaught(EnBenVisitor* this, PlayState* play);
+#endif
 
 // SCP-096's moods
 #define EN_BEN_SCP_SHY_CALM 0
@@ -130,10 +118,14 @@ ActorProfile En_Ben_Scp_Profile = {
 // How tall each of them is, for whether you can see them
 static f32 sScpHeights[] = { 66.0f, 81.0f, 62.0f };
 
+#if EN_BEN_SCP != BEN_VISITOR_SHY
+#define EN_BEN_SCP_MARKS // it leaves something on the ground
+#endif
+
 /**
  * Everything it did to you, put back.
  */
-void EnBenScp_Restore(EnBenVisitor* this, PlayState* play) {
+static void EnBenScp_Restore(EnBenVisitor* this, PlayState* play) {
     EnBenVisitor_Release(this, play);
     Play_FillScreen(play, false, 0, 0, 0, 0);
     if ((this->actor.params == BEN_VISITOR_SHY) && (this->mood != EN_BEN_SCP_SHY_CALM)) {
@@ -141,15 +133,16 @@ void EnBenScp_Restore(EnBenVisitor* this, PlayState* play) {
     }
 }
 
-void EnBenScp_Leave(EnBenVisitor* this, PlayState* play) {
+static void EnBenScp_Leave(EnBenVisitor* this, PlayState* play) {
     EnBenScp_Restore(this, play);
     Actor_Kill(&this->actor);
 }
 
+#if EN_BEN_SCP != BEN_VISITOR_SCULPTURE
 /**
  * The floor under (x, z), looking down from `fromY`, or BGCHECK_Y_MIN if there isn't one.
  */
-f32 EnBenScp_FloorAt(PlayState* play, f32 x, f32 z, f32 fromY) {
+static f32 EnBenScp_FloorAt(PlayState* play, f32 x, f32 z, f32 fromY) {
     CollisionPoly* poly;
     s32 bgId;
     Vec3f pos;
@@ -163,7 +156,7 @@ f32 EnBenScp_FloorAt(PlayState* play, f32 x, f32 z, f32 fromY) {
 /**
  * Straight towards `target` at `speed`, through anything in the way, keeping to the floor where there is one.
  */
-void EnBenScp_Through(EnBenVisitor* this, PlayState* play, Vec3f* target, f32 speed) {
+static void EnBenScp_Through(EnBenVisitor* this, PlayState* play, Vec3f* target, f32 speed) {
     s16 yaw = Math_Vec3f_Yaw(&this->actor.world.pos, target);
     f32 floorY;
 
@@ -176,22 +169,25 @@ void EnBenScp_Through(EnBenVisitor* this, PlayState* play, Vec3f* target, f32 sp
     }
     this->actor.shape.rot.y = this->actor.world.rot.y = yaw;
 }
+#endif
 
+#ifdef EN_BEN_SCP_MARKS
 /**
  * A mark on the floor where it is now: SCP-106's corrosion, SCP-173's stain.
  */
-void EnBenScp_Mark(EnBenVisitor* this) {
+static void EnBenScp_Mark(EnBenVisitor* this) {
     this->marks[this->markHead] = this->actor.world.pos;
     this->markHead = (this->markHead + 1) % EN_BEN_VISITOR_MARKS;
     if (this->markCount < EN_BEN_VISITOR_MARKS) {
         this->markCount++;
     }
 }
+#endif
 
-void EnBenScp_Init(Actor* thisx, PlayState* play) {
+static void EnBenScp_Init(Actor* thisx, PlayState* play) {
     EnBenVisitor* this = (EnBenVisitor*)thisx;
 
-    if ((this->actor.params < BEN_VISITOR_SCP_FIRST) || (this->actor.params >= BEN_VISITOR_COUNT)) {
+    if (this->actor.params != EN_BEN_SCP) {
         Actor_Kill(&this->actor);
         return;
     }
@@ -209,38 +205,33 @@ void EnBenScp_Init(Actor* thisx, PlayState* play) {
     this->markCount = 0;
     this->blink = STATUE_BLINK_EVERY + (s32)Rand_ZeroFloat(STATUE_BLINK_RANGE);
     this->dist = OLD_FIRST_DIST;
-    switch (this->actor.params) {
-        case BEN_VISITOR_SCULPTURE:
-            // You can keep your eyes on it with Z
-            this->actor.flags &= ~ACTOR_FLAG_LOCK_ON_DISABLED;
-            this->actor.flags |= ACTOR_FLAG_ATTENTION_ENABLED;
-            this->actor.attentionRangeType = ATTENTION_RANGE_5;
-            this->actionFunc = EnBenScp_Statue;
-            break;
-
-        case BEN_VISITOR_SHY:
-            this->actionFunc = EnBenScp_Shy;
-            break;
-
-        default:
-            this->actionFunc = EnBenScp_OldRise;
-            break;
-    }
+#if EN_BEN_SCP == BEN_VISITOR_SCULPTURE
+    // You can keep your eyes on it with Z
+    this->actor.flags &= ~ACTOR_FLAG_LOCK_ON_DISABLED;
+    this->actor.flags |= ACTOR_FLAG_ATTENTION_ENABLED;
+    this->actor.attentionRangeType = ATTENTION_RANGE_5;
+    this->actionFunc = EnBenScp_Statue;
+#elif EN_BEN_SCP == BEN_VISITOR_SHY
+    this->actionFunc = EnBenScp_Shy;
+#else
+    this->actionFunc = EnBenScp_OldRise;
+#endif
 }
 
-void EnBenScp_Destroy(Actor* thisx, PlayState* play) {
+static void EnBenScp_Destroy(Actor* thisx, PlayState* play) {
     EnBenVisitor* this = (EnBenVisitor*)thisx;
 
     EnBenScp_Restore(this, play);
 }
 
+#if EN_BEN_SCP == BEN_VISITOR_SCULPTURE
 // ---------------------------------------------------------------------------------------------------------------------
 // SCP-173
 
 /**
  * Link's eyes: shut, opening or closing (`phase` frames into a blink). Returns true while they're all the way shut.
  */
-s32 EnBenScp_Blink(EnBenVisitor* this, PlayState* play) {
+static s32 EnBenScp_Blink(EnBenVisitor* this, PlayState* play) {
     s32 t = this->phase;
     s32 shade;
 
@@ -275,7 +266,7 @@ s32 EnBenScp_Blink(EnBenVisitor* this, PlayState* play) {
 /**
  * In a blink: closer, all at once, facing you. Returns true if that's close enough to have you.
  */
-s32 EnBenScp_Leap(EnBenVisitor* this, PlayState* play) {
+static s32 EnBenScp_Leap(EnBenVisitor* this, PlayState* play) {
     Player* player = GET_PLAYER(play);
     f32 dist = Actor_WorldDistXZToActor(&this->actor, &player->actor);
     s16 yaw = Actor_WorldYawTowardActor(&this->actor, &player->actor);
@@ -290,7 +281,7 @@ s32 EnBenScp_Leap(EnBenVisitor* this, PlayState* play) {
     return Actor_WorldDistXZToActor(&this->actor, &player->actor) < STATUE_CATCH;
 }
 
-void EnBenScp_Statue(EnBenVisitor* this, PlayState* play) {
+static void EnBenScp_Statue(EnBenVisitor* this, PlayState* play) {
     Player* player = GET_PLAYER(play);
     s32 shut = false;
     s32 seen;
@@ -359,7 +350,7 @@ void EnBenScp_Statue(EnBenVisitor* this, PlayState* play) {
     this->actor.shape.rot.y = this->actor.world.rot.y = yaw;
 }
 
-void EnBenScp_StatueCaught(EnBenVisitor* this, PlayState* play) {
+static void EnBenScp_StatueCaught(EnBenVisitor* this, PlayState* play) {
     if (this->timer < STATUE_CAUGHT_SHOW) {
         Play_FillScreen(play, false, 0, 0, 0, 0); // eyes open, and it's right there
     } else if (this->timer == STATUE_CAUGHT_SHOW) {
@@ -373,6 +364,7 @@ void EnBenScp_StatueCaught(EnBenVisitor* this, PlayState* play) {
     }
 }
 
+#elif EN_BEN_SCP == BEN_VISITOR_SHY
 // ---------------------------------------------------------------------------------------------------------------------
 // SCP-096
 
@@ -380,7 +372,7 @@ void EnBenScp_StatueCaught(EnBenVisitor* this, PlayState* play) {
  * Whether you've just seen its face: it's turned to you, you're near enough to make it out, and it's there in front of
  * you.
  */
-s32 EnBenScp_FaceSeen(EnBenVisitor* this, PlayState* play) {
+static s32 EnBenScp_FaceSeen(EnBenVisitor* this, PlayState* play) {
     Camera* camera = GET_ACTIVE_CAM(play);
     s16 toEye = Math_Vec3f_Yaw(&this->actor.world.pos, &camera->eye);
     s16 off = toEye - this->actor.shape.rot.y;
@@ -389,7 +381,7 @@ s32 EnBenScp_FaceSeen(EnBenVisitor* this, PlayState* play) {
            EnBenVisitor_Seen(this, play, &this->actor.world.pos, SHY_FACE_MIDDLE);
 }
 
-void EnBenScp_ShyCalm(EnBenVisitor* this, PlayState* play) {
+static void EnBenScp_ShyCalm(EnBenVisitor* this, PlayState* play) {
     Player* player = GET_PLAYER(play);
     s16 yawToYou = Actor_WorldYawTowardActor(&this->actor, &player->actor);
     s32 inView = EnBenVisitor_Seen(this, play, &this->actor.world.pos, 1.0f);
@@ -431,7 +423,7 @@ void EnBenScp_ShyCalm(EnBenVisitor* this, PlayState* play) {
     }
 }
 
-void EnBenScp_Shy(EnBenVisitor* this, PlayState* play) {
+static void EnBenScp_Shy(EnBenVisitor* this, PlayState* play) {
     Player* player = GET_PLAYER(play);
     f32 dist;
 
@@ -508,7 +500,7 @@ void EnBenScp_Shy(EnBenVisitor* this, PlayState* play) {
     }
 }
 
-void EnBenScp_ShyCaught(EnBenVisitor* this, PlayState* play) {
+static void EnBenScp_ShyCaught(EnBenVisitor* this, PlayState* play) {
     if (this->timer < SHY_CAUGHT_SHOW) {
         this->headRoll = (s16)Rand_CenteredFloat(0xC00); // its mouth, right in front of you
     } else if (this->timer == SHY_CAUGHT_SHOW) {
@@ -522,20 +514,21 @@ void EnBenScp_ShyCaught(EnBenVisitor* this, PlayState* play) {
     }
 }
 
+#else
 // ---------------------------------------------------------------------------------------------------------------------
 // SCP-106
 
 /**
  * How far out of the ground he is, in the model: none of him at 0, all of him at 255.
  */
-void EnBenScp_SetRise(EnBenVisitor* this) {
+static void EnBenScp_SetRise(EnBenVisitor* this) {
     this->actor.shape.yOffset = -this->height * 100.0f * (1.0f - (this->rise / 255.0f));
 }
 
 /**
  * Whether a light arrow is near him.
  */
-s32 EnBenScp_LightNear(EnBenVisitor* this, PlayState* play) {
+static s32 EnBenScp_LightNear(EnBenVisitor* this, PlayState* play) {
     Actor* it;
     Vec3f middle = this->actor.world.pos;
 
@@ -549,14 +542,14 @@ s32 EnBenScp_LightNear(EnBenVisitor* this, PlayState* play) {
     return false;
 }
 
-void EnBenScp_OldSinkNow(EnBenVisitor* this, s32 forGood) {
+static void EnBenScp_OldSinkNow(EnBenVisitor* this, s32 forGood) {
     this->frowning = forGood;
     this->timer = 0;
     Actor_PlaySfx(&this->actor, OLD_GROAN);
     this->actionFunc = EnBenScp_OldSink;
 }
 
-void EnBenScp_OldRise(EnBenVisitor* this, PlayState* play) {
+static void EnBenScp_OldRise(EnBenVisitor* this, PlayState* play) {
     if (!this->placed) {
         EnBenVisitor_Arrive(this, play, OLD_FIRST_DIST, false);
         if (this->placed) {
@@ -586,7 +579,7 @@ void EnBenScp_OldRise(EnBenVisitor* this, PlayState* play) {
     }
 }
 
-void EnBenScp_OldWalk(EnBenVisitor* this, PlayState* play) {
+static void EnBenScp_OldWalk(EnBenVisitor* this, PlayState* play) {
     Player* player = GET_PLAYER(play);
     f32 dist = Actor_WorldDistXZToActor(&this->actor, &player->actor);
 
@@ -618,7 +611,7 @@ void EnBenScp_OldWalk(EnBenVisitor* this, PlayState* play) {
     }
 }
 
-void EnBenScp_OldSink(EnBenVisitor* this, PlayState* play) {
+static void EnBenScp_OldSink(EnBenVisitor* this, PlayState* play) {
     Player* player = GET_PLAYER(play);
 
     Math_StepToS(&this->rise, 0, this->frowning ? (OLD_RISE * 2) : OLD_RISE);
@@ -645,7 +638,7 @@ void EnBenScp_OldSink(EnBenVisitor* this, PlayState* play) {
     this->actionFunc = EnBenScp_OldRise;
 }
 
-void EnBenScp_OldCaught(EnBenVisitor* this, PlayState* play) {
+static void EnBenScp_OldCaught(EnBenVisitor* this, PlayState* play) {
     s32 t = this->timer;
 
     if (t < OLD_CAUGHT_DOWN) {
@@ -663,8 +656,9 @@ void EnBenScp_OldCaught(EnBenVisitor* this, PlayState* play) {
         func_80169EFC(play);
     }
 }
+#endif
 
-void EnBenScp_Update(Actor* thisx, PlayState* play) {
+static void EnBenScp_Update(Actor* thisx, PlayState* play) {
     EnBenVisitor* this = (EnBenVisitor*)thisx;
 
     this->timer++;
@@ -674,26 +668,31 @@ void EnBenScp_Update(Actor* thisx, PlayState* play) {
     this->actionFunc(this, play);
 }
 
+#ifdef EN_BEN_SCP_MARKS
 /**
  * A pool on the ground at `pos`, `scale` the size of the model's, `alpha` showing.
  */
-void EnBenScp_DrawPool(PlayState* play, Vec3f* pos, f32 scale, u8 r, u8 g, u8 b, u8 alpha) {
+static void EnBenScp_DrawPool(PlayState* play, Vec3f* pos, f32 scale, u8 r, u8 g, u8 b, u8 alpha) {
     OPEN_DISPS(play->state.gfxCtx);
 
     Matrix_Translate(pos->x, pos->y + 0.5f, pos->z, MTXMODE_NEW);
     Matrix_Scale(scale, scale, scale, MTXMODE_APPLY);
     MATRIX_FINALIZE_AND_LOAD(POLY_XLU_DISP++, play->state.gfxCtx);
     gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, r, g, b, alpha);
-    gSPDisplayList(POLY_XLU_DISP++, sScp106PoolDL);
+    gSPDisplayList(POLY_XLU_DISP++, sScpPoolDL);
 
     CLOSE_DISPS(play->state.gfxCtx);
 }
+#endif
 
-void EnBenScp_Draw(Actor* thisx, PlayState* play) {
+static void EnBenScp_Draw(Actor* thisx, PlayState* play) {
     EnBenVisitor* this = (EnBenVisitor*)thisx;
+#if EN_BEN_SCP == BEN_VISITOR_SHY
     s32 screaming = (this->mood == EN_BEN_SCP_SHY_UPSET) || (this->mood == EN_BEN_SCP_SHY_CHASE);
+#elif EN_BEN_SCP == BEN_VISITOR_OLD_MAN
     s32 i;
     s32 age;
+#endif
 
     if (!this->placed) {
         return;
@@ -706,52 +705,46 @@ void EnBenScp_Draw(Actor* thisx, PlayState* play) {
         gSPDisplayList(POLY_OPA_DISP++, sScpSetupDL);
         MATRIX_FINALIZE_AND_LOAD(POLY_OPA_DISP++, play->state.gfxCtx);
 
-        switch (this->actor.params) {
-            case BEN_VISITOR_SCULPTURE:
-                gSPDisplayList(POLY_OPA_DISP++, sScp173DL);
-                break;
-
-            case BEN_VISITOR_SHY:
-                gSPDisplayList(POLY_OPA_DISP++, sScp096BodyDL);
-                // Its hands over its face while it screams and while it sits
-                gSPDisplayList(POLY_OPA_DISP++,
-                               ((this->mood == EN_BEN_SCP_SHY_UPSET) || (this->mood == EN_BEN_SCP_SHY_SIT))
-                                   ? sScp096ArmsUpDL
-                                   : sScp096ArmsDownDL);
-                Matrix_Translate(0.0f, SCP_096_NECK_Y, 0.0f, MTXMODE_APPLY);
-                Matrix_RotateZS(this->headRoll, MTXMODE_APPLY);
-                MATRIX_FINALIZE_AND_LOAD(POLY_OPA_DISP++, play->state.gfxCtx);
-                gSPDisplayList(POLY_OPA_DISP++, screaming ? sScp096ScreamDL : sScp096HeadDL);
-                break;
-
-            default:
-                gSPDisplayList(POLY_OPA_DISP++, sScp106DL);
-                break;
-        }
+#if EN_BEN_SCP == BEN_VISITOR_SCULPTURE
+        gSPDisplayList(POLY_OPA_DISP++, sScp173DL);
+#elif EN_BEN_SCP == BEN_VISITOR_SHY
+        gSPDisplayList(POLY_OPA_DISP++, sScp096BodyDL);
+        // Its hands over its face while it screams and while it sits
+        gSPDisplayList(POLY_OPA_DISP++, ((this->mood == EN_BEN_SCP_SHY_UPSET) || (this->mood == EN_BEN_SCP_SHY_SIT))
+                                            ? sScp096ArmsUpDL
+                                            : sScp096ArmsDownDL);
+        Matrix_Translate(0.0f, SCP_096_NECK_Y, 0.0f, MTXMODE_APPLY);
+        Matrix_RotateZS(this->headRoll, MTXMODE_APPLY);
+        MATRIX_FINALIZE_AND_LOAD(POLY_OPA_DISP++, play->state.gfxCtx);
+        gSPDisplayList(POLY_OPA_DISP++, screaming ? sScp096ScreamDL : sScp096HeadDL);
+#else
+        gSPDisplayList(POLY_OPA_DISP++, sScp106DL);
+#endif
     }
 
     CLOSE_DISPS(play->state.gfxCtx);
 
+#ifdef EN_BEN_SCP_MARKS
     // What it leaves on the ground
-    if ((this->markCount > 0) || (this->actor.params == BEN_VISITOR_OLD_MAN)) {
-        Gfx_SetupDL25_Xlu(play->state.gfxCtx);
-        OPEN_DISPS(play->state.gfxCtx);
-        gSPDisplayList(POLY_XLU_DISP++, sScpGroundSetupDL);
-        CLOSE_DISPS(play->state.gfxCtx);
-
-        if (this->actor.params == BEN_VISITOR_SCULPTURE) {
-            // The reddish-brown stain where it was standing
-            EnBenScp_DrawPool(play, &this->marks[0], OLD_MARK_SCALE, 92, 40, 22, 200);
-        } else if (this->actor.params == BEN_VISITOR_OLD_MAN) {
-            for (i = 0; i < this->markCount; i++) {
-                age = (this->markHead - 1 - i + EN_BEN_VISITOR_MARKS) % EN_BEN_VISITOR_MARKS;
-                EnBenScp_DrawPool(play, &this->marks[age], OLD_MARK_SCALE, 24, 16, 8,
-                                  (u8)(220 - (i * 160 / EN_BEN_VISITOR_MARKS)));
-            }
-            if (!this->isHidden && (this->actionFunc != EnBenScp_OldWalk)) {
-                // The pool he's coming up out of, or going down into
-                EnBenScp_DrawPool(play, &this->actor.world.pos, OLD_POOL_SCALE, 20, 12, 6, 235);
-            }
-        }
+    Gfx_SetupDL25_Xlu(play->state.gfxCtx);
+    OPEN_DISPS(play->state.gfxCtx);
+    gSPDisplayList(POLY_XLU_DISP++, sScpGroundSetupDL);
+    CLOSE_DISPS(play->state.gfxCtx);
+#if EN_BEN_SCP == BEN_VISITOR_SCULPTURE
+    if (this->markCount > 0) {
+        // The reddish-brown stain where it was standing
+        EnBenScp_DrawPool(play, &this->marks[0], OLD_MARK_SCALE, 92, 40, 22, 200);
     }
+#else
+    for (i = 0; i < this->markCount; i++) {
+        age = (this->markHead - 1 - i + EN_BEN_VISITOR_MARKS) % EN_BEN_VISITOR_MARKS;
+        EnBenScp_DrawPool(play, &this->marks[age], OLD_MARK_SCALE, 24, 16, 8,
+                          (u8)(220 - (i * 160 / EN_BEN_VISITOR_MARKS)));
+    }
+    if (!this->isHidden && (this->actionFunc != EnBenScp_OldWalk)) {
+        // The pool he's coming up out of, or going down into
+        EnBenScp_DrawPool(play, &this->actor.world.pos, OLD_POOL_SCALE, 20, 12, 6, 235);
+    }
+#endif
+#endif
 }

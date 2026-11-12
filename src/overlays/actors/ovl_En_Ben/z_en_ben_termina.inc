@@ -34,8 +34,8 @@
  * It also sends the visitors from other stories (En_Ben_Visitor): once in a while, a little after you arrive
  * somewhere one of them belongs, one of them comes instead (the Tall Man in the woods and the fields, the Smiling Man
  * in town at night, "Go to sleep." indoors at night), and nothing else happens while it's here. Three of the SCP
- * Foundation's come the same way (En_Ben_Scp, DECISIONS D18): the sculpture in the temples and dark places, the shy one
- * in the open country, the old man in the swamp and the graveyard at night and under the graveyard.
+ * Foundation's come the same way (En_Ben_Scp173, 096 and 106; DECISIONS D18): the sculpture in the temples and dark
+ * places, the shy one in the open country, the old man in the swamp and the graveyard at night and under the graveyard.
  */
 
 #define EN_BEN_TERMINA_FIRST 900           // after you arrive, the first thing is at least this long (45 s)
@@ -130,6 +130,12 @@ typedef struct EnBenVisitorLine {
     /* 0x4 */ f32 chance;   // how likely it comes, the one time a scene visit gives it the chance
 } EnBenVisitorLine;
 
+// Which actor each of them is (BEN_VISITOR_*): the SCPs each have their own, so only that model is in memory
+static s16 sVisitorActors[BEN_VISITOR_COUNT] = {
+    ACTOR_EN_BEN_VISITOR, ACTOR_EN_BEN_VISITOR, ACTOR_EN_BEN_VISITOR,
+    ACTOR_EN_BEN_SCP173,  ACTOR_EN_BEN_SCP096,  ACTOR_EN_BEN_SCP106,
+};
+
 // Where each of them belongs
 static EnBenVisitorLine sVisitors[] = {
     { SCENE_26SARUNOMORI, BEN_VISITOR_TALL, false, 0.35f }, // the Woods of Mystery
@@ -162,7 +168,7 @@ static EnBenVisitorLine sVisitors[] = {
     { SCENE_TAKARAYA, BEN_VISITOR_SLEEP, true, 0.3f },      // the Treasure Chest Shop
     { SCENE_LABO, BEN_VISITOR_SLEEP, true, 0.3f },          // the Marine Research Lab
     { SCENE_KAJIYA, BEN_VISITOR_SLEEP, true, 0.3f },        // the Mountain Smithy
-    // The SCP Foundation's (En_Ben_Scp)
+    // The SCP Foundation's (En_Ben_Scp173, 096 and 106)
     { SCENE_MITURIN, BEN_VISITOR_SCULPTURE, false, 0.3f },     // Woodfall Temple
     { SCENE_HAKUGIN, BEN_VISITOR_SCULPTURE, false, 0.3f },     // Snowhead Temple
     { SCENE_SEA, BEN_VISITOR_SCULPTURE, false, 0.3f },         // Great Bay Temple
@@ -241,9 +247,8 @@ s32 EnBen_TryVisitor(EnBen* this, PlayState* play) {
             !Ben_VisitorReady(line->visitor) || (Rand_ZeroOne() >= line->chance)) {
             continue;
         }
-        this->other = Actor_Spawn(
-            &play->actorCtx, play, (line->visitor >= BEN_VISITOR_SCP_FIRST) ? ACTOR_EN_BEN_SCP : ACTOR_EN_BEN_VISITOR,
-            player->actor.world.pos.x, player->actor.world.pos.y, player->actor.world.pos.z, 0, 0, 0, line->visitor);
+        this->other = Actor_Spawn(&play->actorCtx, play, sVisitorActors[line->visitor], player->actor.world.pos.x,
+                                  player->actor.world.pos.y, player->actor.world.pos.z, 0, 0, 0, line->visitor);
         if (this->other == NULL) {
             return false;
         }

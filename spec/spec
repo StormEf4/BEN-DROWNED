@@ -5166,10 +5166,24 @@ beginseg
 endseg
 
 beginseg
-    name "ovl_En_Ben_Scp"
+    name "ovl_En_Ben_Scp173"
     compress
-    include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Ben_Scp/z_en_ben_scp.o"
-    include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Ben_Scp/ovl_En_Ben_Scp_reloc.o"
+    include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Ben_Scp173/z_en_ben_scp173.o"
+    include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Ben_Scp173/ovl_En_Ben_Scp173_reloc.o"
+endseg
+
+beginseg
+    name "ovl_En_Ben_Scp096"
+    compress
+    include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Ben_Scp096/z_en_ben_scp096.o"
+    include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Ben_Scp096/ovl_En_Ben_Scp096_reloc.o"
+endseg
+
+beginseg
+    name "ovl_En_Ben_Scp106"
+    compress
+    include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Ben_Scp106/z_en_ben_scp106.o"
+    include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Ben_Scp106/ovl_En_Ben_Scp106_reloc.o"
 endseg
 
 beginseg

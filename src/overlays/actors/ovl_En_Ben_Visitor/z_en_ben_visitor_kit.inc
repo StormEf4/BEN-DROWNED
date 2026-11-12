@@ -1,6 +1,6 @@
 /**
  * The visitors' kit: what every visitor needs (whether you can see it, somewhere to stand, holding Link, hurting him
- * without killing him), shared by En_Ben_Visitor (the stories) and En_Ben_Scp (the Foundation's). Each includes it
+ * without killing him), shared by En_Ben_Visitor (the stories) and the SCPs (En_Ben_Scp173, 096, 106). Each includes it
  * once; each has its own copy, since one overlay can't call into another. Before it: VISITOR_PLACE_GIVE_UP, and an
  * actor on the EnBenVisitor struct (z_en_ben_visitor.h) with its `height` set in Init.
  */

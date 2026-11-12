@@ -175,7 +175,7 @@ Termina's small scares are `EN_BEN_TERMINA_*` in `z_en_ben_termina.inc` (how oft
 `_SOONER`); where the visitors come and how likely, its `sVisitors` table and `EN_BEN_VISITOR_*`, and how often each
 can come, `BEN_VISITOR_EVERY` in `src/ben/ben_core.c`. What the visitors do is `TALL_*`, `SMILE_*` and `SLEEP_*` in
 `src/overlays/actors/ovl_En_Ben_Visitor/z_en_ben_visitor.c`, and the SCPs' is `STATUE_*`, `SHY_*` and `OLD_*` in
-`src/overlays/actors/ovl_En_Ben_Scp/z_en_ben_scp.c`. The rest are all in `src/overlays/actors/ovl_En_Ben/z_en_ben.c`: `EN_BEN_END_SIGHTINGS` (when the ending comes to you),
+`src/overlays/actors/ovl_En_Ben_Visitor/z_en_ben_scp.inc`. The rest are all in `src/overlays/actors/ovl_En_Ben/z_en_ben.c`: `EN_BEN_END_SIGHTINGS` (when the ending comes to you),
 `EN_BEN_DREAM_SIGHTINGS`, `EN_BEN_SEA_DEPTH` (if the open sea never takes you, lower it), `EN_BEN_WHITEOUT_*`, and the
 Salesman scene's `EN_BEN_SALESMAN_*`. Where each session puts you is `Ben_WarpToSession` in `src/ben/ben_core.c`.
 Hide and seek's numbers are `EN_BEN_SEEK_*` in `z_en_ben_seek.inc`; the sigil tasks' are `EN_BEN_CHILD_*`,
@@ -190,6 +190,7 @@ project (`tools/ben/modelkit.py`): edit `tools/ben/gen_ben_models.py` and run it
 The visitors are `tools/ben/gen_ben_visitors.py`, written to
 `src/overlays/actors/ovl_En_Ben_Visitor/z_en_ben_visitor_models.inc.c` the same way. They're an actor of their own
 (`ACTOR_EN_BEN_VISITOR`), so their models are in memory only while one of them is here. The same script writes the
-SCPs' to `src/overlays/actors/ovl_En_Ben_Scp/z_en_ben_scp_models.inc.c`, for their own actor (`ACTOR_EN_BEN_SCP`);
+SCPs' to `ovl_En_Ben_Scp173/z_en_ben_scp173_models.inc.c` (and 096's and 106's), each its own actor
+(`ACTOR_EN_BEN_SCP173` and so on, so only the one that's here is in memory);
 the two share their helpers through `ovl_En_Ben_Visitor/z_en_ben_visitor_kit.inc`. The SCP models are built from the
 articles' descriptions only; no image from the wiki was used.
