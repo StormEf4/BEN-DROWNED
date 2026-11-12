@@ -5,6 +5,8 @@
 
 struct EnBenVisitor;
 
+#define EN_BEN_VISITOR_MARKS 8 // SCP-106: the pools of corrosion he's left, the newest of them
+
 typedef void (*EnBenVisitorActionFunc)(struct EnBenVisitor*, PlayState*);
 
 typedef struct EnBenVisitor {
@@ -26,6 +28,14 @@ typedef struct EnBenVisitor {
     /* 0x15E */ u8 isDark;    // Go to sleep: the lights are out (or going out)
     /* 0x15F */ u8 placed;    // it's somewhere (placed once the camera's set up)
     /* 0x160 */ f32 dist;     // the Tall Man: how far away he stands next
-} EnBenVisitor;               // size = 0x164
+    /* 0x164 */ f32 height;   // how tall it is, for whether you can see it
+    /* 0x168 */ s16 blink;    // SCP-173: frames until you next blink
+    /* 0x16A */ s16 rise;     // SCP-106: how far out of the ground he is (0-255)
+    /* 0x16C */ u8 mood;      // SCP-096: calm, upset, after you, or sitting (EN_BEN_SCP_SHY_*)
+    /* 0x16D */ u8 markHead;  // SCP-106: the next pool of corrosion to write
+    /* 0x16E */ u8 markCount; // and how many there are
+    /* 0x170 */ Vec3f marks[EN_BEN_VISITOR_MARKS];
+    /* 0x1D0 */ Vec3f home; // SCP-096: where it paces about
+} EnBenVisitor;             // size = 0x1DC
 
 #endif // Z_EN_BEN_VISITOR_H

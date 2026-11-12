@@ -5166,6 +5166,13 @@ beginseg
 endseg
 
 beginseg
+    name "ovl_En_Ben_Scp"
+    compress
+    include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Ben_Scp/z_en_ben_scp.o"
+    include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Ben_Scp/ovl_En_Ben_Scp_reloc.o"
+endseg
+
+beginseg
     name "gameplay_keep"
     compress
     romalign 0x1000

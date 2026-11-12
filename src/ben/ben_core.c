@@ -284,7 +284,7 @@ static s32 Ben_GetTerminaDirector(s16 sceneId) {
 
 #define BEN_VISITOR_EVERY (3 * 60) // a visitor comes at most once in this many minutes of the game's clock
 
-static s32 sBenVisitorLast[BEN_VISITOR_COUNT] = { -1, -1, -1 };
+static s32 sBenVisitorLast[BEN_VISITOR_COUNT] = { -1, -1, -1, -1, -1, -1 };
 
 /**
  * The game's clock in minutes since the first dawn. The day changes at 6 AM, not at midnight, so the small hours

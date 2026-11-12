@@ -88,6 +88,7 @@
 #define SLEEP_CLICK NA_SE_EV_FOOT_SWITCH
 
 #include "z_en_ben_visitor_models.inc.c"
+#include "z_en_ben_visitor_kit.inc"
 
 void EnBenVisitor_Init(Actor* thisx, PlayState* play);
 void EnBenVisitor_Destroy(Actor* thisx, PlayState* play);
@@ -115,142 +116,7 @@ ActorProfile En_Ben_Visitor_Profile = {
 };
 
 // How tall each of them is, for whether you can see them
-static f32 sVisitorHeights[BEN_VISITOR_COUNT] = { 89.0f, 64.0f, 50.0f };
-
-// Where it looks for somewhere to stand out of your sight: behind you first, then round to the sides
-static s16 sHiddenYaws[] = { 0x8000, 0x6000, -0x6000, 0x4000, -0x4000, 0x2800, -0x2800 };
-static s16 sInViewYaws[] = { 0, 0x0C00, -0x0C00, 0x1800, -0x1800 };
-static f32 sDistanceScales[] = { 1.0f, 0.8f, 0.6f };
-
-/**
- * Whether you can see any of it standing at `base`: on screen within `middle` of its centre (1: anywhere), and nothing
- * in the way.
- */
-s32 EnBenVisitor_Seen(EnBenVisitor* this, PlayState* play, Vec3f* base, f32 middle) {
-    Camera* camera = GET_ACTIVE_CAM(play);
-    f32 height = sVisitorHeights[this->actor.params];
-    Vec3f point;
-    Vec3f projected;
-    Vec3f hitPos;
-    CollisionPoly* poly;
-    s32 bgId;
-    f32 invW;
-    s32 i;
-
-    for (i = 0; i < 3; i++) {
-        point = *base;
-        point.y += 10.0f + (height - 15.0f) * i / 2;
-        Actor_GetProjectedPos(play, &point, &projected, &invW);
-        if ((projected.z <= 0.0f) || (fabsf(projected.x * invW) > middle) || (fabsf(projected.y * invW) > 1.0f)) {
-            continue;
-        }
-        if (!BgCheck_EntityLineTest1(&play->colCtx, &camera->eye, &point, &hitPos, &poly, true, true, true, true,
-                                     &bgId)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-/**
- * A spot `dist` from `from` along `yaw` with floor near its height and nothing in the way.
- */
-s32 EnBenVisitor_FindSpot(PlayState* play, Vec3f* from, s16 yaw, f32 dist, Vec3f* outPos) {
-    Vec3f eye;
-    Vec3f target;
-    Vec3f hitPos;
-    CollisionPoly* poly;
-    s32 bgId;
-    f32 floorY;
-
-    eye.x = from->x;
-    eye.y = from->y + 40.0f;
-    eye.z = from->z;
-    target.x = eye.x + (Math_SinS(yaw) * dist);
-    target.y = eye.y;
-    target.z = eye.z + (Math_CosS(yaw) * dist);
-    if (BgCheck_EntityLineTest1(&play->colCtx, &eye, &target, &hitPos, &poly, true, false, false, true, &bgId)) {
-        return false;
-    }
-    target.y = from->y + 100.0f;
-    floorY = BgCheck_EntityRaycastFloor3(&play->colCtx, &poly, &bgId, &target);
-    if ((floorY == BGCHECK_Y_MIN) || (fabsf(floorY - from->y) > 150.0f)) {
-        return false;
-    }
-    outPos->x = target.x;
-    outPos->y = floorY;
-    outPos->z = target.z;
-    return true;
-}
-
-void EnBenVisitor_PlaceAt(EnBenVisitor* this, PlayState* play, Vec3f* pos) {
-    Player* player = GET_PLAYER(play);
-
-    this->actor.world.pos = *pos;
-    this->actor.prevPos = *pos;
-    this->actor.shape.rot.y = this->actor.world.rot.y = Math_Vec3f_Yaw(pos, &player->actor.world.pos);
-}
-
-/**
- * Somewhere about `dist` from you that you can (`visible`) or can't see, starting from the yaws given (from where the
- * camera looks).
- */
-s32 EnBenVisitor_TryPlace(EnBenVisitor* this, PlayState* play, f32 dist, s32 visible) {
-    Player* player = GET_PLAYER(play);
-    s16 camYaw = Camera_GetCamDirYaw(GET_ACTIVE_CAM(play));
-    s16* yaws = visible ? sInViewYaws : sHiddenYaws;
-    s32 count = visible ? ARRAY_COUNT(sInViewYaws) : ARRAY_COUNT(sHiddenYaws);
-    Vec3f pos;
-    s32 d;
-    s32 i;
-
-    for (d = 0; d < ARRAY_COUNT(sDistanceScales); d++) {
-        for (i = 0; i < count; i++) {
-            if (EnBenVisitor_FindSpot(play, &player->actor.world.pos, camYaw + yaws[i], dist * sDistanceScales[d],
-                                      &pos) &&
-                (!EnBenVisitor_Seen(this, play, &pos, 1.0f) == !visible)) {
-                EnBenVisitor_PlaceAt(this, play, &pos);
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-/**
- * Whether something else has Link: a conversation, a cutscene, a door.
- */
-s32 EnBenVisitor_Busy(PlayState* play) {
-    return (play->msgCtx.msgMode != MSGMODE_NONE) || (play->csCtx.state != CS_STATE_IDLE) ||
-           (play->transitionTrigger != TRANS_TRIGGER_OFF) || (play->transitionMode != TRANS_MODE_OFF);
-}
-
-void EnBenVisitor_Hold(EnBenVisitor* this, PlayState* play) {
-    if (!this->holding) {
-        Player_SetCsActionWithHaltedActors(play, &this->actor, PLAYER_CSACTION_WAIT);
-        this->holding = true;
-    }
-}
-
-void EnBenVisitor_Release(EnBenVisitor* this, PlayState* play) {
-    if (this->holding) {
-        Player_SetCsAction(play, &this->actor, PLAYER_CSACTION_END);
-        this->holding = false;
-    }
-}
-
-/**
- * It hurts, but it never kills: at least a heart is always left.
- */
-void EnBenVisitor_Hurt(PlayState* play, s16 amount) {
-    Player* player = GET_PLAYER(play);
-
-    if (gSaveContext.save.saveInfo.playerData.health > 0x10) {
-        gSaveContext.save.saveInfo.playerData.health =
-            CLAMP_MIN(gSaveContext.save.saveInfo.playerData.health - amount, 0x10);
-    }
-    Player_PlaySfx(player, NA_SE_VO_LI_DAMAGE_S + player->ageProperties->voiceSfxIdOffset);
-}
+static f32 sVisitorHeights[] = { 89.0f, 64.0f, 50.0f };
 
 /**
  * The lights, `dark` of the way out (0-255): the fog black and close, and nothing lit.
@@ -325,10 +191,11 @@ void EnBenVisitor_Leave(EnBenVisitor* this, PlayState* play) {
 void EnBenVisitor_Init(Actor* thisx, PlayState* play) {
     EnBenVisitor* this = (EnBenVisitor*)thisx;
 
-    if ((this->actor.params < 0) || (this->actor.params >= BEN_VISITOR_COUNT)) {
+    if ((this->actor.params < 0) || (this->actor.params >= BEN_VISITOR_SCP_FIRST)) {
         Actor_Kill(&this->actor);
         return;
     }
+    this->height = sVisitorHeights[this->actor.params];
     this->isHidden = true;
     this->placed = false;
     this->timer = 0;
@@ -358,27 +225,6 @@ void EnBenVisitor_Destroy(Actor* thisx, PlayState* play) {
     EnBenVisitor* this = (EnBenVisitor*)thisx;
 
     EnBenVisitor_Restore(this, play);
-}
-
-/**
- * Its first frames: somewhere to stand, or it doesn't come. Returns true once it's there.
- */
-s32 EnBenVisitor_Arrive(EnBenVisitor* this, PlayState* play, f32 dist, s32 visible) {
-    if (this->placed) {
-        return true;
-    }
-    if (EnBenVisitor_TryPlace(this, play, dist, visible) ||
-        (visible && EnBenVisitor_TryPlace(this, play, dist * 0.8f, false))) {
-        this->placed = true;
-        this->isHidden = false;
-        this->timer = 0;
-        this->unseenFrames = 0;
-        this->seenFrames = 0;
-        this->stuck = 0;
-    } else if (this->timer >= VISITOR_PLACE_GIVE_UP) {
-        Actor_Kill(&this->actor);
-    }
-    return false;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -477,19 +323,6 @@ void EnBenVisitor_TallCaught(EnBenVisitor* this, PlayState* play) {
 
 // ---------------------------------------------------------------------------------------------------------------------
 // The Smiling Man
-
-/**
- * One step along `yaw`, if there's ground there and nothing in the way.
- */
-s32 EnBenVisitor_Step(EnBenVisitor* this, PlayState* play, s16 yaw, f32 speed) {
-    Vec3f pos;
-
-    if (!EnBenVisitor_FindSpot(play, &this->actor.world.pos, yaw, speed, &pos)) {
-        return false;
-    }
-    this->actor.world.pos = pos;
-    return true;
-}
 
 /**
  * The dance: up and down on the beat, and leaning into each hop.

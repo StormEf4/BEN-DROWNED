@@ -4,7 +4,7 @@ Generates the Expanded Horror visitors' models as N64 display lists (F3DEX2), wr
 src/overlays/actors/ovl_En_Ben_Visitor/z_en_ben_visitor_models.inc.c (the visitors' own actor, En_Ben_Visitor, includes it). Built on
 the model kit copied from the Majora's Mask: WTF project (tools/ben/modelkit.py).
 
-Usage: tools/ben/gen_ben_visitors.py [output file]
+Usage: tools/ben/gen_ben_visitors.py [visitors output file] [SCP output file]
 
 - The Tall Man: twice Link's height, a black suit, a white shirt and a black tie, arms that hang past his knees with
   long pale fingers, and a pale head with no face at all. His tendrils are a display list of their own, drawn only
@@ -14,6 +14,16 @@ Usage: tools/ben/gen_ben_visitors.py [output file]
 - The one who says "Go to sleep": a white hoodie and black jeans, a kitchen knife. His face is drawn unlit and
   unfogged (a display list of its own, vertex coloured), so when the lights go out it's the only thing you can see:
   bone white, black rings around eyes that never close, a red cut grin up to the cheeks. Black hair, lit.
+
+And the SCP Foundation's, written to src/overlays/actors/ovl_En_Ben_Scp/z_en_ben_scp_models.inc.c (En_Ben_Scp includes
+it), each built from its SCP wiki article's words (CC BY-SA 3.0, credited in docs/ben/CREDITS.md), not from any picture:
+- SCP-173: concrete and rebar, with traces of Krylon spray paint. A crude figure, thick limbs with rusted rebar
+  sticking out of them, a big head, its face sprayed on.
+- SCP-096: about 2.4 m, emaciated, no hair, skin almost without colour, arms far too long, pale eyes. Its body and
+  its arms (hanging, or up over its face) are display lists of their own, and so are its head calm and screaming, the
+  jaw hanging open far wider than a jaw should.
+- SCP-106: an old man rotting, hunched over, black and wet. And the pool of corrosion he leaves, drawn on the ground
+  (vertex alpha fades its edge).
 
 Model space: +Y up, +Z forward (where the face looks), +X to its left; 1/100 of a world unit (drawn at scale 0.01).
 Each head's pivot is its neck, at <NAME>_NECK_Y.
@@ -25,11 +35,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from modelkit import (  # noqa: E402
-    GLOW_FRONT, LIT_OPA, Mesh, RingSurface, S, F, emit_parts, facing, gfx, ring, setup_dl, smooth_loft,
+    GLOW, GLOW_FRONT, LIT_OPA, Mesh, RingSurface, S, F, emit_parts, facing, gfx, ring, setup_dl, smooth_loft,
     smooth_sphere, smooth_spike,
 )
 
 OUT = Path(__file__).resolve().parents[2] / "src/overlays/actors/ovl_En_Ben_Visitor/z_en_ben_visitor_models.inc.c"
+SCP_OUT = Path(__file__).resolve().parents[2] / "src/overlays/actors/ovl_En_Ben_Scp/z_en_ben_scp_models.inc.c"
 
 BLACK = (10, 10, 12)
 SUIT = (26, 26, 30)
@@ -46,7 +57,21 @@ MOUTH = (16, 4, 6)
 TEETH = (238, 232, 206)
 EYE_WHITE = (240, 238, 230)
 
+CONCRETE = (148, 144, 136)
+CONCRETE_DARK = (110, 106, 100)
+REBAR = (96, 52, 30)
+KRYLON_RED = (168, 32, 26)
+KRYLON_GREEN = (44, 118, 62)
+SHY_SKIN = (216, 212, 204)
+SHY_SHADOW = (168, 162, 154)
+SHY_SOCKET = (70, 64, 60)
+OLD_SKIN = (44, 38, 32)
+OLD_ROT = (80, 60, 40)
+SLIME = (10, 8, 6)
+OLD_EYE = (206, 190, 130)
+
 TALL_HEIGHT = 8900
+SHY_NECK_Y = 6600
 SMILE_NECK_Y = 5600
 SLEEP_NECK_Y = 4300
 
@@ -389,6 +414,193 @@ def coloured_parts(mesh, parts):
     return mesh.coloured_dl(faces, lambda p: colours[p])
 
 
+# ---------------------------------------------------------------------------------------------------------------------
+# SCP-173
+
+
+def sculpture():
+    parts = []
+    for side in (-1, 1):
+        x = side * 300
+        legs = smooth_loft([ring(y, r, r * 0.9, 8, cx=x, power=2.8) for y, r in ((0, 340), (1200, 300), (2200, 330))],
+                           cap_start=True, cap_end=True)
+        parts.append(S(legs, CONCRETE_DARK))
+    torso = RingSurface([
+        (2000, 680, 420, 0, 3.0),
+        (3200, 640, 400, 0, 3.0),
+        (4300, 740, 430, 0, 3.0),
+        (4700, 620, 400, 0, 2.6),
+        (4950, 260, 240, 0, 2.2),
+    ], 12)
+    parts.append(S(torso.build(cap_start=True, cap_end=True), CONCRETE))
+    for side in (-1, 1):
+        parts.append(S(limb([(side * 800, 4550, 0), (side * 830, 3500, 20), (side * 850, 2550, 40)], [230, 210, 190],
+                            cap_start=True), CONCRETE))
+        # Rusted rebar, out of the ends of its arms and its shoulders
+        for root, tip in (((side * 850, 2500, 40), (side * 880, 2100, 120)),
+                          ((side * 820, 2520, -40), (side * 760, 2150, -110)),
+                          ((side * 760, 4700, -60), (side * 900, 5150, -160))):
+            parts.append(S(smooth_spike(root, tip, 32, sides=4), REBAR))
+    # Krylon on its chest, sprayed and run
+    paint = [on_face(torso, [(-460, 4000), (-120, 4250), (-80, 4120), (-420, 3880)], 8),
+             on_face(torso, [(150, 3500), (420, 3650), (380, 3550), (170, 3420)], 8)]
+    parts.append(F(paint, KRYLON_GREEN))
+    parts.append(F([on_face(torso, [(-200, 3000), (-150, 3000), (-140, 3500), (-210, 3500)], 8)], KRYLON_RED))
+    parts.append(S(limb([(0, 4850, 0), (0, 5250, 0)], [260, 250], cap_end=False), CONCRETE))
+    head = head_surface(5900, 560, 640, 520, power=2.6)
+    parts.append(S(head.build(cap_start=True, cap_end=True), CONCRETE))
+    # Its face: sprayed on, eyes too big and black, a red mouth, green running down from them
+    eyes = [oval_on(head, side * 210, 6050, 140, 100, 8) for side in (-1, 1)]
+    parts.append(F(eyes, BLACK))
+    streaks = []
+    for side in (-1, 1):
+        streaks.append(on_face(head, [(side * 260, 5650), (side * 200, 5650), (side * 190, 5960), (side * 270, 5960)], 6))
+        streaks.append(on_face(head, [(side * 420, 6300), (side * 120, 6420), (side * 110, 6340), (side * 410, 6230)], 6))
+    parts.append(F(streaks, KRYLON_GREEN))
+    w = 230
+    mouth = band(head, -w, w, lambda x: 5600 + 40 * math.sin(x / 40), lambda x: 5540 + 40 * math.sin(x / 40), 7, steps=8)
+    parts.append(F(mouth, KRYLON_RED))
+    return parts
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# SCP-096
+
+
+def shy_body():
+    parts = []
+    for side in (-1, 1):
+        x = side * 200
+        parts.append(S(limb([(x, 100, 0), (x * 1.05, 1900, 30), (x, 3700, 0)], [115, 100, 140], cap_start=True),
+                       SHY_SKIN))
+        parts.append(S(smooth_sphere(x, 60, 90, 110, 60, 230, n=8, stacks=4), SHY_SKIN))
+    torso = RingSurface([
+        (3550, 380, 220, 0, 2.2),
+        (4200, 320, 180, 0, 2.2),  # starved thin at the waist
+        (5000, 420, 225, 0, 2.2),
+        (5800, 560, 250, 0, 2.4),
+        (6200, 620, 240, 0, 2.6),
+        (6450, 300, 200, 0, 2.2),
+        (SHY_NECK_Y + 60, 120, 120, 0, 2.0),
+    ], 12)
+    parts.append(S(torso.build(cap_start=True, cap_end=True), SHY_SKIN))
+    ribs = []
+    for k in range(5):
+        y = 4800 + 180 * k
+        for side in (-1, 1):
+            ribs.append(on_face(torso, [(side * 60, y), (side * 330, y - 70), (side * 330, y - 40), (side * 60, y + 30)],
+                                6))
+    parts.append(F(ribs, SHY_SHADOW))
+    return parts
+
+
+def shy_arms(up):
+    parts = []
+    for side in (-1, 1):
+        if up:
+            # Up over its face: elbows out in front, palms flat against where its face is
+            pts = [(side * 620, 6200, 0), (side * 540, 6000, 650), (side * 170, 7100, 470)]
+            fingers = [((side * (170 - 30 * k), 7150, 470), (side * (130 - 40 * k), 7700, 430)) for k in range(4)]
+        else:
+            pts = [(side * 640, 6200, 0), (side * 700, 4200, 40), (side * 720, 1800, 80)]
+            fingers = [((side * (720 + 25 * (k - 1.5)), 1720, 80 + 20 * k), (side * (740 + 35 * (k - 1.5)), 1050, 110 + 30 * k))
+                       for k in range(4)]
+        parts.append(S(bent_limb(pts, [100, 80, 66]), SHY_SKIN))
+        for root, tip in fingers:
+            parts.append(S(smooth_spike(root, tip, 26, sides=4), SHY_SKIN))
+    return parts
+
+
+def shy_head(scream):
+    """Its head, the pivot at the neck: calm, or screaming with the jaw hanging open to its chest."""
+    parts = []
+    head = head_surface(560 if scream else 520, 270, 380 if scream else 420, 300, cz=40)
+    parts.append(S(head.build(cap_start=True, cap_end=True), SHY_SKIN))
+    sockets, eyes = [], []
+    for side in (-1, 1):
+        sockets.append(oval_on(head, side * 105, 660, 75, 62 if scream else 52, 5))
+        eyes.append(oval_on(head, side * 105, 660, 26, 26, 9, n=8))
+    parts.append(F(sockets, SHY_SOCKET))
+    parts.append(F(eyes, (236, 236, 230)))  # no colour in them at all
+    if scream:
+        jaw = head_surface(-120, 220, 560, 230, cz=70)
+        parts.append(S(jaw.build(cap_start=True, cap_end=True), SHY_SKIN))
+        parts.append(F([oval_on(jaw, 0, -60, 165, 470, 8, n=14)], BLACK))
+    else:
+        parts.append(F(band(head, -110, 110, lambda x: 290, lambda x: 262, 6, steps=4), SHY_SOCKET))
+    return parts
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# SCP-106
+
+
+def old_man():
+    parts = []
+    for side in (-1, 1):
+        x = side * 220
+        parts.append(S(bent_limb([(x, 90, 40), (x * 1.05, 1700, 220), (x * 0.95, 3200, 0)], [130, 115, 160]), OLD_SKIN))
+        parts.append(S(smooth_sphere(x, 50, 130, 120, 60, 260, n=8, stacks=4), OLD_SKIN))
+    # Bent over: each ring further forward than the one below
+    torso = RingSurface([
+        (3000, 400, 260, 0, 2.2),
+        (3700, 380, 250, 80, 2.2),
+        (4300, 460, 270, 220, 2.2),
+        (4900, 560, 290, 400, 2.4),
+        (5200, 500, 280, 480, 2.2),
+        (5420, 190, 180, 560, 2.0),
+    ], 12)
+    parts.append(S(torso.build(cap_start=True, cap_end=True), OLD_SKIN))
+    rot = [on_face(torso, [(-300, 3800), (-60, 4000), (-120, 4300), (-340, 4100)], 6),
+           on_face(torso, [(80, 4500), (330, 4600), (280, 4850), (60, 4750)], 6)]
+    parts.append(F(rot, OLD_ROT))
+    drips = [on_face(torso, [(x - 25, 3300), (x + 25, 3300), (x + 30, y0), (x - 30, y0)], 9)
+             for x, y0 in ((-180, 4600), (40, 4200), (220, 4900), (-40, 4900))]
+    parts.append(F(drips, SLIME))
+    for side in (-1, 1):
+        parts.append(S(bent_limb([(side * 540, 5000, 430), (side * 640, 3800, 620), (side * 610, 2700, 640)],
+                                 [115, 95, 80]), OLD_SKIN))
+        for k in range(4):
+            root = (side * (610 + 25 * (k - 1.5)), 2650, 640 + 25 * k)
+            tip = (side * (630 + 45 * (k - 1.5)), 2050, 700 + 40 * k)
+            parts.append(S(smooth_spike(root, tip, 24, sides=4, bend=(0, 0, 40)), OLD_SKIN))
+    parts.append(S(limb([(0, 5300, 540), (0, 5550, 640)], [170, 160], cap_end=False), OLD_SKIN))
+    head = head_surface(5850, 290, 360, 300, cz=700)
+    parts.append(S(head.build(cap_start=True, cap_end=True), OLD_SKIN))
+    sockets = [oval_on(head, side * 110, 5950, 80, 60, 5) for side in (-1, 1)]
+    parts.append(F(sockets, SLIME))
+    glints = [oval_on(head, side * 110, 5950, 18, 18, 9, n=6) for side in (-1, 1)]
+    parts.append(F(glints, OLD_EYE))
+    mouth = band(head, -170, 170, lambda x: 5700 - 40 * (x / 170) ** 2, lambda x: 5600 + 30 * (x / 170) ** 2, 6, steps=8)
+    parts.append(F(mouth, SLIME))
+    wrinkles = [on_face(head, [(-200, y), (200, y + 10), (200, y + 30), (-200, y + 20)], 4) for y in (6080, 6150)]
+    parts.append(F(wrinkles, (24, 20, 16)))
+    return parts
+
+
+def corrosion():
+    """A pool of black corrosion on the ground, its edge ragged and fading out."""
+    faces = []
+    colours = {}
+    n = 18
+    rings = []
+    for k, (r, a) in enumerate(((0, 235), (900, 225), (1700, 170), (2300, 0))):
+        pts = []
+        for i in range(n):
+            t = math.tau * i / n
+            rr = r * (1.0 + 0.22 * math.sin(i * 2.7 + k) + 0.1 * math.cos(i * 5.3))
+            p = (rr * math.cos(t), 3.0 + k, rr * math.sin(t))
+            colours[p] = (255, 255, 255, a)
+            pts.append(p)
+        rings.append(pts)
+    for k in range(len(rings) - 1):
+        for i in range(n):
+            j = (i + 1) % n
+            q = [rings[k][i], rings[k][j], rings[k + 1][j], rings[k + 1][i]]
+            faces.append(q if k else q[:1] + q[2:])  # the middle ring is one point: triangles
+    return faces, lambda p: colours[p]
+
+
 def main():
     out = Path(sys.argv[1]) if len(sys.argv) > 1 else OUT
 
@@ -436,6 +648,49 @@ def main():
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(text)
     print(f"wrote {out} ({len(tall.vtx)} tall, {len(smile.vtx)} smiling, {len(sleep.vtx)} sleep vertices)")
+
+    scp_out = Path(sys.argv[2]) if len(sys.argv) > 2 else SCP_OUT
+    s173 = Mesh("sScp173Vtx")
+    s173_dl = gfx("sScp173DL", emit_parts(s173, sculpture()))
+    s096 = Mesh("sScp096Vtx")
+    s096_body_dl = gfx("sScp096BodyDL", emit_parts(s096, shy_body()))
+    s096_down_dl = gfx("sScp096ArmsDownDL", emit_parts(s096, shy_arms(False)))
+    s096_up_dl = gfx("sScp096ArmsUpDL", emit_parts(s096, shy_arms(True)))
+    s096_head_dl = gfx("sScp096HeadDL", emit_parts(s096, shy_head(False)))
+    s096_scream_dl = gfx("sScp096ScreamDL", emit_parts(s096, shy_head(True)))
+    s106 = Mesh("sScp106Vtx")
+    s106_dl = gfx("sScp106DL", emit_parts(s106, old_man()))
+    pool_faces, pool_colour = corrosion()
+    pool_dl = gfx("sScp106PoolDL", s106.coloured_dl(pool_faces, pool_colour))
+    setup = "\n".join([
+        setup_dl("sScpSetupDL", LIT_OPA, "Their bodies: opaque, lit, untextured"),
+        setup_dl("sScpGroundSetupDL", GLOW,
+                 "Corrosion on the ground: unlit, colour and alpha = vertex colour x primitive colour, double sided"),
+    ])
+    text = f"""// Generated by tools/ben/gen_ben_visitors.py; edit that script instead of this file.
+// SCP-173, SCP-096 and SCP-106, after the SCP wiki (CC BY-SA 3.0, docs/ben/CREDITS.md). +Y up, +Z forward, +X to
+// its left; 1/100 of a world unit.
+// clang-format off
+
+#define SCP_096_NECK_Y ({SHY_NECK_Y}.0f)
+
+{s173.vtx_array()}
+{s096.vtx_array()}
+{s106.vtx_array()}
+{setup}
+{s173_dl}
+{s096_body_dl}
+{s096_down_dl}
+{s096_up_dl}
+{s096_head_dl}
+{s096_scream_dl}
+{s106_dl}
+{pool_dl}
+// clang-format on
+"""
+    scp_out.parent.mkdir(parents=True, exist_ok=True)
+    scp_out.write_text(text)
+    print(f"wrote {scp_out} ({len(s173.vtx)} 173, {len(s096.vtx)} 096, {len(s106.vtx)} 106 vertices)")
 
 
 if __name__ == "__main__":

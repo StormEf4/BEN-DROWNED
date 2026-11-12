@@ -75,6 +75,19 @@ can kill Link, and leaving the area always ends it (the screen, the lights and t
 | **The Smiling Man**: thin, a dark suit, a grin far too wide | Clock Town's streets, the Laundry Pool and Milk Road, at night | He dances towards you, slowly while you watch, fast while you don't. Get far enough away, or out of his sight for 5 seconds, and his smile drops and he walks off. If he reaches you: his face in yours, black, two hearts. |
 | **"Go to sleep."**: a white hoodie, a knife, a face that's always there | Inside at night: the inn, the Milk Bar, the Mayor's, the shops, the ranch house, the Music Box House, the dojo, the Post Office, the lab, the smithy | The lights go out and come back, again and again, the light shorter each time. He only moves in the dark, and in the dark his face is the only thing you can see. Leave the room. If he reaches you: *"Go to sleep."*, black, an hour gone (never across dawn or on the final night), a heart down. After 75 seconds, the lights come back and he isn't there. |
 
+### Three from the SCP Foundation (Session 3 on, Expanded Horror)
+
+Three of the SCP wiki's best known come the same way, with the same rules: never named, at most once every three game
+hours each, never lethal, and leaving the area (or, in a temple, the room) ends it. Each keeps its article's rule.
+Where more than one visitor belongs (Termina Field, Ikana Canyon, the swamp), which one tries first is random. The
+articles are credited in [CREDITS.md](CREDITS.md).
+
+| Who | Where | What to do |
+|---|---|---|
+| **The sculpture** (SCP-173): concrete and rebar, flecks of green spray paint, black eyes | The temples, the Ancient Castle, Beneath the Well, the Pirates' Fortress, the grottos, the Oceanside Spider House, any time | It can't move while you can see it. Z-target it to keep your eyes on it. But Link blinks every 4 to 6 seconds (a few black frames with Screen flashes on, a short fade with them off), and in each blink it's closer with the scrape of stone. Look away and it slides after you. If it's on you when you can't see it: it's right there, then black and a snap, three hearts, back at the way in. Its stain stays where it first stood. Gone after 90 seconds, the next time you look away. |
+| **The shy one** (SCP-096): very tall, thin, pale, long arms | Termina Field, the Great Bay Coast, Zora Cape, Ikana Canyon, Mountain Village and the road to Snowhead, any time | Far off, pacing, its back to you; every so often it turns round. Don't look at its face. If you see it (a glimpse is enough): the music stops, it covers its face and screams for 8 seconds, then comes for you through anything, faster the further away you are. Leave the area. If it reaches you: black, a scream, four hearts, back at the way in. After 45 seconds it gives up and sits with its face in its hands. |
+| **The old man** (SCP-106): rotten black, hunched, glinting eyes | At night: the swamp, the graveyard, the Laundry Pool, the road to Ikana. Any time: under the graveyard | Bubbling and a groan where you aren't looking: he rises out of a pool of corrosion and walks slowly to you through walls, leaving pools behind. Every 20 seconds or so he sinks and comes up again closer, sometimes where you're looking. A light arrow near him sends him down for good. If he reaches you: everything goes his colour, two hearts, back at the way in. After 90 seconds he sinks and doesn't come up. |
+
 ### Hide and seek (Sessions 4 to 6)
 
 Once a session, after you've seen it a couple of times, the statue is standing right in front of you instead:
@@ -150,13 +163,19 @@ straight away. Played again the same session: *"...not tonight."* Sigils 4 to 7 
 | 37 | Expanded Horror, Session 3, East Clock Town at night: the Smiling Man dances towards you; run until he's far, or break his line of sight: he frowns and walks off. Let him reach you: black, two hearts, never lethal on low health |
 | 38 | Expanded Horror, Session 3, inside the Milk Bar or a shop at night: the lights go out and come back; he only moves in the dark, his face bright. Let him reach you: "Go to sleep.", black, an hour later on the clock, a heart down. Walk out mid-way: the next area's lights are normal |
 | 39 | A visitor doesn't come back to the same kind of place for three game hours, and none appears during a conversation or a minigame |
+| 40 | Expanded Horror, Session 3, a temple or Beneath the Well: the sculpture is somewhere behind you. Watch it (Z-target works): it doesn't move between blinks, and is closer after each. Turn away: the scrape, and it's on you: black, a snap, three hearts, back at the way in. Never lethal on low health |
+| 41 | The sculpture with Screen flashes off: the blinks are short fades, never a hard cut. Walk into the next room mid-way: the screen is normal |
+| 42 | Expanded Horror, Session 3, Termina Field or Ikana Canyon: the shy one far off, pacing. Keep it at the edge of the screen and don't look at its face when it turns: nothing happens and it goes after 2 minutes |
+| 43 | Look at its face: the music stops, it screams into its hands for 8 s, then runs at you through walls. Leave the area before it reaches you: the next area's music is normal. Let it reach you: four hearts, never below one |
+| 44 | Expanded Horror, Session 3, the swamp or the graveyard at night (or under the graveyard): bubbling and a groan; the old man rises from a pool behind you, walks through walls, leaves pools, sinks and comes up closer. Fire a light arrow near him: he sinks and is gone. Let him reach you: brown-black, two hearts, back at the way in |
 
 ## Tuning
 
 Termina's small scares are `EN_BEN_TERMINA_*` in `z_en_ben_termina.inc` (how often: `_FIRST`, `_EVERY`, `_RANGE`,
 `_SOONER`); where the visitors come and how likely, its `sVisitors` table and `EN_BEN_VISITOR_*`, and how often each
 can come, `BEN_VISITOR_EVERY` in `src/ben/ben_core.c`. What the visitors do is `TALL_*`, `SMILE_*` and `SLEEP_*` in
-`src/overlays/actors/ovl_En_Ben_Visitor/z_en_ben_visitor.c`. The rest are all in `src/overlays/actors/ovl_En_Ben/z_en_ben.c`: `EN_BEN_END_SIGHTINGS` (when the ending comes to you),
+`src/overlays/actors/ovl_En_Ben_Visitor/z_en_ben_visitor.c`, and the SCPs' is `STATUE_*`, `SHY_*` and `OLD_*` in
+`src/overlays/actors/ovl_En_Ben_Scp/z_en_ben_scp.c`. The rest are all in `src/overlays/actors/ovl_En_Ben/z_en_ben.c`: `EN_BEN_END_SIGHTINGS` (when the ending comes to you),
 `EN_BEN_DREAM_SIGHTINGS`, `EN_BEN_SEA_DEPTH` (if the open sea never takes you, lower it), `EN_BEN_WHITEOUT_*`, and the
 Salesman scene's `EN_BEN_SALESMAN_*`. Where each session puts you is `Ben_WarpToSession` in `src/ben/ben_core.c`.
 Hide and seek's numbers are `EN_BEN_SEEK_*` in `z_en_ben_seek.inc`; the sigil tasks' are `EN_BEN_CHILD_*`,
@@ -170,4 +189,7 @@ project (`tools/ben/modelkit.py`): edit `tools/ben/gen_ben_models.py` and run it
 `python3 tools/ben/preview_model.py src/overlays/actors/ovl_En_Ben/z_en_ben_models.inc.c child.png sMoonChildBodyDL "sMoonChildHeadDL@0,3200,0,0,0,0,1"`.
 The visitors are `tools/ben/gen_ben_visitors.py`, written to
 `src/overlays/actors/ovl_En_Ben_Visitor/z_en_ben_visitor_models.inc.c` the same way. They're an actor of their own
-(`ACTOR_EN_BEN_VISITOR`), so their models are in memory only while one of them is here.
+(`ACTOR_EN_BEN_VISITOR`), so their models are in memory only while one of them is here. The same script writes the
+SCPs' to `src/overlays/actors/ovl_En_Ben_Scp/z_en_ben_scp_models.inc.c`, for their own actor (`ACTOR_EN_BEN_SCP`);
+the two share their helpers through `ovl_En_Ben_Visitor/z_en_ben_visitor_kit.inc`. The SCP models are built from the
+articles' descriptions only; no image from the wiki was used.

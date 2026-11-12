@@ -33,7 +33,9 @@
  * All of this is the Expanded Horror (BEN_EXPANDED, DECISIONS D17): with it off there's no Termina director at all.
  * It also sends the visitors from other stories (En_Ben_Visitor): once in a while, a little after you arrive
  * somewhere one of them belongs, one of them comes instead (the Tall Man in the woods and the fields, the Smiling Man
- * in town at night, "Go to sleep." indoors at night), and nothing else happens while it's here.
+ * in town at night, "Go to sleep." indoors at night), and nothing else happens while it's here. Three of the SCP
+ * Foundation's come the same way (En_Ben_Scp, DECISIONS D18): the sculpture in the temples and dark places, the shy one
+ * in the open country, the old man in the swamp and the graveyard at night and under the graveyard.
  */
 
 #define EN_BEN_TERMINA_FIRST 900           // after you arrive, the first thing is at least this long (45 s)
@@ -160,6 +162,28 @@ static EnBenVisitorLine sVisitors[] = {
     { SCENE_TAKARAYA, BEN_VISITOR_SLEEP, true, 0.3f },      // the Treasure Chest Shop
     { SCENE_LABO, BEN_VISITOR_SLEEP, true, 0.3f },          // the Marine Research Lab
     { SCENE_KAJIYA, BEN_VISITOR_SLEEP, true, 0.3f },        // the Mountain Smithy
+    // The SCP Foundation's (En_Ben_Scp)
+    { SCENE_MITURIN, BEN_VISITOR_SCULPTURE, false, 0.3f },     // Woodfall Temple
+    { SCENE_HAKUGIN, BEN_VISITOR_SCULPTURE, false, 0.3f },     // Snowhead Temple
+    { SCENE_SEA, BEN_VISITOR_SCULPTURE, false, 0.3f },         // Great Bay Temple
+    { SCENE_INISIE_N, BEN_VISITOR_SCULPTURE, false, 0.3f },    // Stone Tower Temple
+    { SCENE_CASTLE, BEN_VISITOR_SCULPTURE, false, 0.3f },      // Ancient Castle of Ikana
+    { SCENE_PIRATE, BEN_VISITOR_SCULPTURE, false, 0.3f },      // the Pirates' Fortress, inside
+    { SCENE_KAKUSIANA, BEN_VISITOR_SCULPTURE, false, 0.3f },   // the grottos
+    { SCENE_REDEAD, BEN_VISITOR_SCULPTURE, false, 0.3f },      // Beneath the Well
+    { SCENE_KINDAN2, BEN_VISITOR_SCULPTURE, false, 0.3f },     // the Oceanside Spider House
+    { SCENE_00KEIKOKU, BEN_VISITOR_SHY, false, 0.2f },         // Termina Field
+    { SCENE_30GYOSON, BEN_VISITOR_SHY, false, 0.25f },         // the Great Bay Coast
+    { SCENE_31MISAKI, BEN_VISITOR_SHY, false, 0.25f },         // Zora Cape
+    { SCENE_IKANA, BEN_VISITOR_SHY, false, 0.25f },            // Ikana Canyon
+    { SCENE_10YUKIYAMANOMURA, BEN_VISITOR_SHY, false, 0.25f }, // Mountain Village, in winter
+    { SCENE_13HUBUKINOMITI, BEN_VISITOR_SHY, false, 0.25f },   // the road to Snowhead
+    { SCENE_20SICHITAI, BEN_VISITOR_OLD_MAN, true, 0.3f },     // the Southern Swamp, at night
+    { SCENE_20SICHITAI2, BEN_VISITOR_OLD_MAN, true, 0.3f },    // cleansed, at night
+    { SCENE_BOTI, BEN_VISITOR_OLD_MAN, true, 0.3f },           // the graveyard, at night
+    { SCENE_ALLEY, BEN_VISITOR_OLD_MAN, true, 0.2f },          // the Laundry Pool, at night
+    { SCENE_IKANAMAE, BEN_VISITOR_OLD_MAN, true, 0.25f },      // the road to Ikana, at night
+    { SCENE_HAKASHITA, BEN_VISITOR_OLD_MAN, false, 0.35f },    // under the graveyard
 };
 
 s32 EnBen_TerminaWait(void) {
@@ -207,17 +231,19 @@ s32 EnBen_VisitorHere(PlayState* play, Actor* visitor) {
  */
 s32 EnBen_TryVisitor(EnBen* this, PlayState* play) {
     Player* player = GET_PLAYER(play);
-    s32 i;
+    s32 start = (s32)Rand_ZeroFloat(ARRAY_COUNT(sVisitors)); // where more than one belongs, any of them first
+    s32 n;
 
-    for (i = 0; i < ARRAY_COUNT(sVisitors); i++) {
-        EnBenVisitorLine* line = &sVisitors[i];
+    for (n = 0; n < ARRAY_COUNT(sVisitors); n++) {
+        EnBenVisitorLine* line = &sVisitors[(start + n) % ARRAY_COUNT(sVisitors)];
 
         if ((line->sceneId != play->sceneId) || (line->nightOnly && !gSaveContext.save.isNight) ||
             !Ben_VisitorReady(line->visitor) || (Rand_ZeroOne() >= line->chance)) {
             continue;
         }
-        this->other = Actor_Spawn(&play->actorCtx, play, ACTOR_EN_BEN_VISITOR, player->actor.world.pos.x,
-                                  player->actor.world.pos.y, player->actor.world.pos.z, 0, 0, 0, line->visitor);
+        this->other = Actor_Spawn(
+            &play->actorCtx, play, (line->visitor >= BEN_VISITOR_SCP_FIRST) ? ACTOR_EN_BEN_SCP : ACTOR_EN_BEN_VISITOR,
+            player->actor.world.pos.x, player->actor.world.pos.y, player->actor.world.pos.z, 0, 0, 0, line->visitor);
         if (this->other == NULL) {
             return false;
         }

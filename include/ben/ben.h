@@ -85,7 +85,12 @@
 #define BEN_VISITOR_TALL 0  // the Tall Man: don't look at him for long
 #define BEN_VISITOR_SMILE 1 // the Smiling Man: he dances towards you, and you have to get away
 #define BEN_VISITOR_SLEEP 2 // "Go to sleep.": he only moves while the lights are out
-#define BEN_VISITOR_COUNT 3
+/* En_Ben_Scp params (Expanded Horror): the SCP Foundation's, sent the same way (docs/ben/CREDITS.md) */
+#define BEN_VISITOR_SCP_FIRST 3
+#define BEN_VISITOR_SCULPTURE 3 // SCP-173: it moves when it isn't seen, and every time you blink
+#define BEN_VISITOR_SHY 4       // SCP-096: never look at its face
+#define BEN_VISITOR_OLD_MAN 5   // SCP-106: he comes up out of the ground, through anything, and takes you down
+#define BEN_VISITOR_COUNT 6
 
 /* Each visitor comes at most once in a few hours of the game's clock (kept in the code segment, so it holds from
  * scene to scene; a new cycle starts it again) */
