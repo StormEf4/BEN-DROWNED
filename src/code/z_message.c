@@ -4445,6 +4445,11 @@ void Message_DrawMain(PlayState* play, Gfx** gfxP) {
                 break;
 
             case MSGMODE_OCARINA_PLAYING:
+                // BEN: the Song of Unhealing, heard beside the game's songs (Ben_OnOcarina): free play has ended its
+                // way, and nothing below looks at the notes this frame
+                if (Ben_OnOcarina(play)) {
+                    break;
+                }
                 msgCtx->ocarinaStaff = AudioOcarina_GetPlayingStaff();
 
                 if ((u32)msgCtx->ocarinaStaff->pos != 0) {

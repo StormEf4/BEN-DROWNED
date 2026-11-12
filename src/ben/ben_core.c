@@ -24,7 +24,13 @@ typedef struct BenSave {
     /* 0x03 */ u8 sightings; // times you've noticed the statue
     /* 0x04 */ u8 flags;     // BEN_FLAG_*
     /* 0x05 */ u8 step;      // where you are within the current session (each session numbers its own steps)
+    /* 0x06 */ u8 unhealing; // BEN_UNHEALING_*: the song is known, and which sigils are stamped
+    /* 0x07 */ u8 seek;      // the sessions hide and seek has been played in (a bit per session)
+    /* 0x08 */ u8 sigilAt;   // the session the last sigil was stamped in (one a session)
 } BenSave;
+
+#define BEN_UNHEALING_KNOWN (1 << 0)
+#define BEN_UNHEALING_SIGIL(n) (1 << (1 + (n))) // the nth sigil (0 first), up to seven
 
 #define BEN_FLAG_REWOUND (1 << 0)    // the Song of Time was played on the 4th day
 #define BEN_FLAG_WARNED (1 << 1)     // "YOU SHOULDN'T HAVE DONE THAT." has been said since
@@ -360,6 +366,230 @@ void Ben_FilterInput(Input* input) {
         default:
             break;
     }
+}
+
+s32 Ben_HasPlayedSeek(void) {
+    return (BEN_SAVE->seek & (1 << Ben_GetSession())) != 0;
+}
+
+void Ben_SetPlayedSeek(void) {
+    BEN_SAVE->seek |= 1 << Ben_GetSession();
+}
+
+/**
+ * The Song of Unhealing. Its listener and teaching melody are ported from the Majora's Mask: WTF project's song kit
+ * (src/code/z_mod_song.c there): the same reading of free play's last notes, the same way of ending free play for a
+ * song the scene takes, and the same playback of a melody of our own through the game's.
+ */
+
+// The game's own buffer of free play's last eight notes (code_8019AF00.c: the pitches it checks its songs against, the
+// latest at [pos - 1]), the pitch of each button, its playback's song, and whether the ocarina reads the pad and checks
+// for songs (both cleared when the game hears one of its own: the last note rings on, and no press plays another)
+extern u8 sCurOcarinaSongWithoutMusicStaff[8];
+extern u8 sOcarinaWithoutMusicStaffPos;
+extern u8 sButtonToPitchMap[5];
+extern OcarinaNote* sPlaybackSong;
+extern u8 sIsOcarinaInputEnabled;
+extern u32 sOcarinaFlags;
+
+// The Song of Healing is C-Left, C-Right, C-Down, twice. This is it the other way round.
+static u8 sUnhealingPitches[] = {
+    OCARINA_PITCH_F4, OCARINA_PITCH_A4, OCARINA_PITCH_B4, OCARINA_PITCH_F4, OCARINA_PITCH_A4, OCARINA_PITCH_B4,
+};
+#define BEN_UNHEALING_NOTES ARRAY_COUNT(sUnhealingPitches)
+// Heard inside a song the game writes as it runs (the scarecrow's), it waits this long for a next note (about a second)
+#define BEN_SONG_HOLD_FRAMES 20
+
+static u8 sUnhealingHeard;  // played, and not answered yet
+static s16 sUnhealingScene; // where
+static u8 sRinging;         // its last note rings on until the box has gone
+static u8 sTeaching;        // the melody is playing
+static u8 sHeldPos;
+static u8 sHeldWait;
+// The melody, written as the game's own songs are (pitch, length in the audio's frames, volume...): the notes, the end,
+// and an entry before them all (the playback reads the one before the note it plays)
+static OcarinaNote sMelody[1 + BEN_UNHEALING_NOTES + 1];
+
+s32 Ben_UnhealingKnown(void) {
+    // Taught by the statue; and from Session 4 on, known anyway, so the quest can't be missed
+    return ((BEN_SAVE->unhealing & BEN_UNHEALING_KNOWN) != 0) || (Ben_GetSession() >= BEN_SESSION_COLD);
+}
+
+s32 Ben_UnhealingTaught(void) {
+    return (BEN_SAVE->unhealing & BEN_UNHEALING_KNOWN) != 0;
+}
+
+s32 Ben_GetSigils(void) {
+    s32 count = 0;
+    s32 i;
+
+    for (i = 0; i < 7; i++) {
+        if (BEN_SAVE->unhealing & BEN_UNHEALING_SIGIL(i)) {
+            count++;
+        }
+    }
+    return count;
+}
+
+s32 Ben_CanStampSigil(void) {
+    return (Ben_GetSigils() < BEN_SIGILS_BUILT) && (BEN_SAVE->sigilAt != Ben_GetSession());
+}
+
+void Ben_StampSigil(PlayState* play) {
+    BEN_SAVE->unhealing |= BEN_UNHEALING_SIGIL(Ben_GetSigils());
+    BEN_SAVE->sigilAt = Ben_GetSession();
+    Sram_BenCommitStory(play); // he knows, even if you turn it off now
+}
+
+static s32 Ben_UnhealingHeard(void) {
+    s32 i;
+
+    if (sOcarinaWithoutMusicStaffPos < BEN_UNHEALING_NOTES) {
+        return false;
+    }
+    for (i = 0; i < BEN_UNHEALING_NOTES; i++) {
+        if (sCurOcarinaSongWithoutMusicStaff[sOcarinaWithoutMusicStaffPos - BEN_UNHEALING_NOTES + i] !=
+            sUnhealingPitches[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// Whether the notes heard are the start of a longer song the game writes as it runs (the scarecrow's), which a
+// further note could still finish
+static s32 Ben_InsideRuntimeSong(PlayState* play) {
+    OcarinaSongButtons* game;
+    s32 index;
+    s32 k;
+    s32 i;
+
+    for (index = OCARINA_SONG_SCARECROW_SPAWN; index <= OCARINA_SONG_TERMINA_WALL; index++) {
+        game = &gOcarinaSongButtons[index];
+        if (!(play->msgCtx.ocarinaAvailableSongs & (1 << index))) {
+            continue;
+        }
+        for (k = BEN_UNHEALING_NOTES; (k < game->numButtons) && (k <= sOcarinaWithoutMusicStaffPos); k++) {
+            for (i = 0; i < k; i++) {
+                if (sCurOcarinaSongWithoutMusicStaff[sOcarinaWithoutMusicStaffPos - k + i] !=
+                    sButtonToPitchMap[game->buttonIndex[i]]) {
+                    break;
+                }
+            }
+            if (i == k) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+s32 Ben_OnOcarina(PlayState* play) {
+    MessageContext* msgCtx = &play->msgCtx;
+    OcarinaStaff* staff;
+
+    // Plain free play, with the game's songs on, a file that isn't his, and a song you know
+    if ((msgCtx->ocarinaAction != OCARINA_ACTION_FREE_PLAY) || (msgCtx->ocarinaAvailableSongs == 0) ||
+        (BEN_BOOT_SAVE && Ben_IsBootFile()) || !Ben_UnhealingKnown()) {
+        return false;
+    }
+    // A song of the game's heard on this note is the game's
+    staff = AudioOcarina_GetPlayingStaff();
+    if (staff->state < 0xFE) {
+        return false;
+    }
+    if (!Ben_UnhealingHeard()) {
+        sHeldWait = 0;
+        return false;
+    }
+    if (Ben_InsideRuntimeSong(play)) {
+        if ((sHeldWait == 0) || (staff->pos != sHeldPos)) {
+            sHeldPos = staff->pos;
+            sHeldWait = 1;
+            return false;
+        }
+        if (sHeldWait++ < BEN_SONG_HOLD_FRAMES) {
+            return false;
+        }
+    }
+    sHeldWait = 0;
+    // Free play ends the way the game ends it for a song it hands to the scene: the ocarina stops reading the pad,
+    // the chime, the last note ringing on until the box has gone, and the song the scene's to take
+    sIsOcarinaInputEnabled = false;
+    sOcarinaFlags = 0;
+    sRinging = true;
+    Audio_PlaySfx(NA_SE_SY_CORRECT_CHIME);
+    msgCtx->ocarinaAction = OCARINA_ACTION_FREE_PLAY_DONE;
+    msgCtx->lastPlayedSong = BEN_SONG_UNHEALING;
+    Message_CloseTextbox(play);
+    msgCtx->ocarinaMode = OCARINA_MODE_EVENT;
+    sUnhealingHeard = true;
+    sUnhealingScene = play->sceneId;
+    return true;
+}
+
+static void Ben_StopMelody(void) {
+    sTeaching = false;
+    AudioOcarina_SetPlaybackSong(0, 0);
+    AudioOcarina_SetInstrument(OCARINA_INSTRUMENT_OFF);
+}
+
+void Ben_TeachUnhealing(void) {
+    s32 i;
+
+    BEN_SAVE->unhealing |= BEN_UNHEALING_KNOWN;
+    bzero(sMelody, sizeof(sMelody));
+    // A beat each, slow, and the last one held
+    for (i = 0; i < BEN_UNHEALING_NOTES; i++) {
+        sMelody[1 + i].pitch = sUnhealingPitches[i];
+        sMelody[1 + i].length = (i == BEN_UNHEALING_NOTES - 1) ? 90 : 40;
+        sMelody[1 + i].volume = 80;
+    }
+    sMelody[1 + BEN_UNHEALING_NOTES].pitch = OCARINA_PITCH_NONE; // the end: no length
+    sMelody[1 + BEN_UNHEALING_NOTES].volume = 80;
+    // The ocarina's sound on, and the game's playback set up as for one of its own songs, with this one in its place
+    AudioOcarina_SetInstrument(OCARINA_INSTRUMENT_DEFAULT);
+    AudioOcarina_SetPlaybackSong(OCARINA_SONG_SONATA + 1, 1);
+    sPlaybackSong = &sMelody[1];
+    AudioOcarina_GetPlaybackStaff()->state = 1;
+    sTeaching = true;
+}
+
+s32 Ben_IsMelodyPlaying(void) {
+    return sTeaching;
+}
+
+void Ben_UpdateSongs(PlayState* play) {
+    Player* player = GET_PLAYER(play);
+    Actor* it;
+
+    if (sTeaching && (AudioOcarina_GetPlaybackStaff()->state == 0)) {
+        Ben_StopMelody();
+    }
+    if (sRinging && (play->msgCtx.msgMode == MSGMODE_NONE)) {
+        sRinging = false;
+        AudioOcarina_SetInstrument(OCARINA_INSTRUMENT_OFF);
+    }
+    if (!sUnhealingHeard) {
+        return;
+    }
+    if (sUnhealingScene != play->sceneId) {
+        sUnhealingHeard = false; // played somewhere you've left
+        return;
+    }
+    // Answered once Link is free of the ocarina
+    if ((player == NULL) || (play->msgCtx.msgMode != MSGMODE_NONE) || (play->csCtx.state != CS_STATE_IDLE) ||
+        (play->transitionTrigger != TRANS_TRIGGER_OFF) || (play->transitionMode != TRANS_MODE_OFF)) {
+        return;
+    }
+    sUnhealingHeard = false;
+    for (it = play->actorCtx.actorLists[ACTORCAT_PROP].first; it != NULL; it = it->next) {
+        if ((it->id == ACTOR_EN_BEN) && (it->params == BEN_ACTOR_UNHEALING) && (it->update != NULL)) {
+            return; // they're already here
+        }
+    }
+    Actor_Spawn(&play->actorCtx, play, ACTOR_EN_BEN, player->actor.world.pos.x, player->actor.world.pos.y,
+                player->actor.world.pos.z, 0, 0, 0, BEN_ACTOR_UNHEALING);
 }
 
 void Ben_StartSessionBen(PlayState* play) {

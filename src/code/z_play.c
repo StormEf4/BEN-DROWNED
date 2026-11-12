@@ -1001,6 +1001,7 @@ void Play_UpdateMain(PlayState* this) {
                     CollisionCheck_Damage(this, &this->colChkCtx);
                     CollisionCheck_ClearContext(this, &this->colChkCtx);
                     Ben_FilterInput(&input[0]); // BEN: losing control of Link
+                    Ben_UpdateSongs(this);      // BEN: the Song of Unhealing
                     if (!this->haltAllActors) {
                         Actor_UpdateAll(this, &this->actorCtx);
                     }

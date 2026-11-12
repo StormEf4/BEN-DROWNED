@@ -242,6 +242,71 @@ HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
 )
 )
 
+// BEN_TEXT_SEEK: hide and seek, once a session from Session 4 to 6. It stands right in front of you.
+DEFINE_MESSAGE(0x4D20, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+COLOR_RED "Let's play hide and seek." COLOR_DEFAULT BOX_BREAK
+COLOR_RED "I hide. You look." COLOR_DEFAULT
+)
+)
+
+// BEN_TEXT_TAUGHT: after the statue answers the Song of Healing by playing it back, backwards
+DEFINE_MESSAGE(0x4D21, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+"...Did you hear that?" BOX_BREAK
+"It played your song back to you." "\n"
+DELAY(0x0014) "Backwards."
+)
+)
+
+// BEN_TEXT_DONT_MOVE: the second sigil. A Moon Child, close in front of you.
+DEFINE_MESSAGE(0x4D22, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+"Stand still with us." BOX_BREAK
+"If you move, he'll know" "\n"
+"where you are."
+)
+)
+
+// BEN_TEXT_NOT_YET: the Song of Unhealing, with nothing for it this session
+DEFINE_MESSAGE(0x4D23, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+"...not tonight."
+)
+)
+
+// BEN_TEXT_SIGIL_1 and on: the Moon Children's phrase, a word at a time, as each sigil is stamped
+DEFINE_MESSAGE(0x4D24, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+COLOR_RED "THE MOON" COLOR_DEFAULT " . . . . . ." BOX_BREAK
+"Play it again another night," "\n"
+"and don't move."
+)
+)
+
+DEFINE_MESSAGE(0x4D25, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+COLOR_RED "THE MOON SEES" COLOR_DEFAULT " . . . . ." BOX_BREAK
+"Play it again another night," "\n"
+"and follow the wet feet."
+)
+)
+
+DEFINE_MESSAGE(0x4D26, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+COLOR_RED "THE MOON SEES THE CHILD" COLOR_DEFAULT BOX_BREAK
+". . . ." BOX_BREAK
+"The rest of us are further in."
+)
+)
+
 /*
  * The following two messages should be kept last and in this order.
  * Message 0xFFFD must be last to not break the message debugger.

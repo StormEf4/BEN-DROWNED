@@ -150,6 +150,11 @@ meant to need community cipher-solving.
   and then the cart goes quiet.
 - The fragments assemble into a readable phrase in the notebook (final wording TBD, see
   `DECISIONS.md` Q5), so the player sees progress without needing outside tools.
+- **Built so far (2026-11-12):** the key is the **Song of Unhealing** (the Song of Healing backwards), which the statue
+  plays back to you when you play it the Song of Healing. Played anywhere, it opens the next sigil's task, one per
+  session: the child no one sees (it leads you), don't move (a minute while the statue closes in), the wet feet. The
+  phrase so far: **THE MOON SEES THE CHILD**, shown in a box as each sigil is stamped, instead of the notebook. The
+  remaining four tasks and the epilogue are still to build (see `PLAYTHROUGH.md`).
 
 ## 6. Original content rules
 

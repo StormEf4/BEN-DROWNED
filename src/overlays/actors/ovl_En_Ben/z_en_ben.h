@@ -9,6 +9,7 @@ typedef void (*EnBenActionFunc)(struct EnBen*, PlayState*);
 
 #define EN_BEN_PATH_POINTS 12 // how many of the places you've just walked through it remembers
 #define EN_BEN_TRAIL_COPIES 5 // when it stands along your path, how many more of it there are
+#define EN_BEN_FEET 16        // the Song of Unhealing's wet footprints, the newest of them
 
 typedef enum EnBenSightingKind {
     /* 0 */ EN_BEN_SIGHTING_STILL, // it stands there, and is gone when you look away
@@ -61,6 +62,25 @@ typedef struct EnBen {
     /* 0x2B0 */ s16 glitchFrames;  // frames left of the game seeming to break
     /* 0x2B2 */ s16 glitchAt;      // while lurking: the timer value at which it breaks, or -1
     /* 0x2B4 */ u8 songReply;      // a song it's going to answer (EN_BEN_REPLY_*)
-} EnBen;                           // size = 0x2B8
+    /* 0x2B5 */ u8 timerOwned;     // the HUD's countdown is ours (hide and seek, standing still)
+    /* 0x2B6 */ s16 seekFrames;    // hide and seek: frames left to find it
+    /* 0x2B8 */ s16 giggleTimer;   // hide and seek: frames until it giggles again
+    /* 0x2BA */ u8 task;           // the Song of Unhealing: which sigil's task (EN_BEN_TASK_*)
+    /* 0x2BB */ u8 hops;           // how far the child has led you
+    /* 0x2BC */ Vec3f childPos;    // the Moon Child
+    /* 0x2C8 */ Vec3f sigilPos;    // the sigil on the ground
+    /* 0x2D4 */ Vec3f stillPos;    // where you were told to stand still
+    /* 0x2E0 */ s16 childYaw;      // which way its body faces
+    /* 0x2E2 */ s16 headYaw;       // and its head, on its own
+    /* 0x2E4 */ s16 headRoll;      // its head's tilt
+    /* 0x2E6 */ s16 sigilAlpha;    // 0 when there's no sigil
+    /* 0x2E8 */ u8 showChild;      // the Moon Child is drawn
+    /* 0x2E9 */ u8 feetHead;       // next footprint slot
+    /* 0x2EA */ u8 feetCount;      // footprints left so far
+    /* 0x2EB */ u8 showStatue;     // the task's own statue, drawn at trail[0]
+    /* 0x2EC */ Vec3f feet[EN_BEN_FEET];
+    /* 0x3AC */ s16 feetYaw[EN_BEN_FEET];
+    /* 0x3CC */ s16 walkYaw; // where the wet feet are heading
+} EnBen;                     // size = 0x3D0
 
 #endif // Z_EN_BEN_H

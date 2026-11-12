@@ -33,6 +33,7 @@
 #include "assets/objects/gameplay_keep/gameplay_keep.h"
 #include "overlays/actors/ovl_En_Osn/z_en_osn.h"
 #include "z_en_ben_face.h"
+#include "z_en_item00.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_DRAW_CULLING_DISABLED | ACTOR_FLAG_LOCK_ON_DISABLED)
 
@@ -157,6 +158,7 @@
 #define EN_BEN_REPLY_HEALING 1                 // the Song of Healing: it doesn't work on him
 #define EN_BEN_REPLY_ELEGY 2                   // the Elegy of Emptiness: it makes statues, and one of them is him
 #define EN_BEN_ELEGY_DELAY 50                  // after the Elegy, how long before he's standing with your shells
+#define EN_BEN_MELODY_LONGEST 240              // the Song of Unhealing, played back: never longer than this
 
 #define EN_BEN_WRONG_FIRST 600      // Session 1: the first stare is at least this long after you arrive (30 s)
 #define EN_BEN_WRONG_EVERY 1200     // then at least this long between them (60 s)
@@ -202,6 +204,14 @@ s32 EnBen_TryPlaceInWhiteout(EnBen* this, PlayState* play);
 void EnBen_Wrong(EnBen* this, PlayState* play);
 void EnBen_TowerScene(EnBen* this, PlayState* play);
 void EnBen_HealingReply(EnBen* this, PlayState* play);
+s32 EnBen_FindSpotFrom(PlayState* play, Vec3f* from, s16 yaw, f32 dist, Vec3f* outPos);
+s32 EnBen_TrySeek(EnBen* this, PlayState* play);
+void EnBen_Seek(EnBen* this, PlayState* play);
+void EnBen_StopTimer(EnBen* this);
+void EnBen_UnhealingInit(EnBen* this, PlayState* play);
+void EnBen_UnhealingDestroy(EnBen* this, PlayState* play);
+void EnBen_Unhealing(EnBen* this, PlayState* play);
+void EnBen_DrawUnhealing(EnBen* this, PlayState* play);
 
 ActorProfile En_Ben_Profile = {
     /**/ ACTOR_EN_BEN,
@@ -299,10 +309,10 @@ s32 EnBen_IsBodyVisible(PlayState* play, Vec3f* base) {
 }
 
 /**
- * Find a spot `dist` units from the player along `yaw` that has floor near the player's height and a clear
- * line back to the player (so the statue never ends up inside a wall or over a pit).
+ * Find a spot `dist` units from `from` (a place on the ground) along `yaw` that has floor near its height and a clear
+ * line back to it (so nothing ends up inside a wall or over a pit).
  */
-s32 EnBen_FindSpot(PlayState* play, Player* player, s16 yaw, f32 dist, Vec3f* outPos) {
+s32 EnBen_FindSpotFrom(PlayState* play, Vec3f* from, s16 yaw, f32 dist, Vec3f* outPos) {
     Vec3f eye;
     Vec3f target;
     Vec3f hitPos;
@@ -310,9 +320,9 @@ s32 EnBen_FindSpot(PlayState* play, Player* player, s16 yaw, f32 dist, Vec3f* ou
     s32 bgId;
     f32 floorY;
 
-    eye.x = player->actor.world.pos.x;
-    eye.y = player->actor.world.pos.y + 40.0f;
-    eye.z = player->actor.world.pos.z;
+    eye.x = from->x;
+    eye.y = from->y + 40.0f;
+    eye.z = from->z;
     target.x = eye.x + (Math_SinS(yaw) * dist);
     target.y = eye.y;
     target.z = eye.z + (Math_CosS(yaw) * dist);
@@ -321,9 +331,9 @@ s32 EnBen_FindSpot(PlayState* play, Player* player, s16 yaw, f32 dist, Vec3f* ou
         return false; // a wall is in the way
     }
 
-    target.y = player->actor.world.pos.y + 100.0f;
+    target.y = from->y + 100.0f;
     floorY = BgCheck_EntityRaycastFloor3(&play->colCtx, &poly, &bgId, &target);
-    if ((floorY == BGCHECK_Y_MIN) || (fabsf(floorY - player->actor.world.pos.y) > 150.0f)) {
+    if ((floorY == BGCHECK_Y_MIN) || (fabsf(floorY - from->y) > 150.0f)) {
         return false; // no floor, or a big drop or climb
     }
 
@@ -331,6 +341,13 @@ s32 EnBen_FindSpot(PlayState* play, Player* player, s16 yaw, f32 dist, Vec3f* ou
     outPos->y = floorY;
     outPos->z = target.z;
     return true;
+}
+
+/**
+ * The same, from where the player is standing.
+ */
+s32 EnBen_FindSpot(PlayState* play, Player* player, s16 yaw, f32 dist, Vec3f* outPos) {
+    return EnBen_FindSpotFrom(play, &player->actor.world.pos, yaw, dist, outPos);
 }
 
 void EnBen_PlaceAt(EnBen* this, PlayState* play, Vec3f* pos) {
@@ -695,6 +712,10 @@ void EnBen_Init(Actor* thisx, PlayState* play) {
         this->actionFunc = EnBen_LairWait;
         return;
     }
+    if (this->actor.params == BEN_ACTOR_UNHEALING) {
+        EnBen_UnhealingInit(this, play); // the Song of Unhealing was played here (z_en_ben_children.inc.c)
+        return;
+    }
     if (this->actor.params == BEN_ACTOR_WRONG) {
         // Session 1: nothing you'd notice, at first. The music plays as normal.
         this->isHidden = true;
@@ -746,6 +767,7 @@ void EnBen_Init(Actor* thisx, PlayState* play) {
     this->inWhiteout = false;
     this->songLatch = false;
     this->songReply = 0;
+    this->timerOwned = false;
     this->faceFrames = 0;
     this->glitchFrames = 0;
     this->glitchAt = -1;
@@ -798,6 +820,12 @@ void EnBen_Destroy(Actor* thisx, PlayState* play) {
     // Whatever it was doing to you stops when you leave.
     Ben_SetInputMode(BEN_INPUT_NORMAL);
     Play_FillScreen(play, false, 0, 0, 0, 0);
+    EnBen_StopTimer(this);
+
+    if (this->actor.params == BEN_ACTOR_UNHEALING) {
+        EnBen_UnhealingDestroy(this, play);
+        return;
+    }
 
     if ((this->actor.params == BEN_ACTOR_LAIR) || (this->actor.params == BEN_ACTOR_WARP) ||
         (this->actor.params == BEN_ACTOR_MOON) || (this->actor.params == BEN_ACTOR_WRONG) ||
@@ -932,6 +960,9 @@ void EnBen_Lurk(EnBen* this, PlayState* play) {
     }
     if (EnBen_EndComes(this, play)) {
         return;
+    }
+    if (EnBen_TrySeek(this, play)) {
+        return; // "Let's play hide and seek." (z_en_ben_seek.inc.c)
     }
     if ((Ben_GetSession() == BEN_SESSION_COLD) && !this->inWhiteout) {
         // Session 4: the snow comes in first, and when it clears, it's there.
@@ -1951,6 +1982,8 @@ void EnBen_CheckSongs(EnBen* this, PlayState* play) {
             EnBen_SetStaring(this, true);
             Player_SetCsActionWithHaltedActors(play, &this->actor, PLAYER_CSACTION_WAIT);
             Message_StartTextbox(play, BEN_TEXT_HEALING, &this->actor);
+            this->directorStep = 0;
+            this->directorTimer = 0;
             this->actionFunc = EnBen_HealingReply;
         } else if (this->actionFunc == EnBen_Lurk) {
             // It heard. It comes right now, and you hear it coming.
@@ -1971,15 +2004,48 @@ void EnBen_CheckSongs(EnBen* this, PlayState* play) {
 }
 
 /**
- * "That song doesn't work on me." Then it's gone, laughing.
+ * "That song doesn't work on me." Then it plays your song back to you, backwards: the Song of Unhealing
+ * (z_en_ben_children.inc.c). Then it's gone, laughing.
  */
 void EnBen_HealingReply(EnBen* this, PlayState* play) {
-    if (Message_GetState(&play->msgCtx) == TEXT_STATE_CLOSING) {
-        Player_SetCsAction(play, &this->actor, PLAYER_CSACTION_END);
-        Play_EnableMotionBlur(EN_BEN_BLUR_ALPHA);
-        this->blurFrames = EN_BEN_BLUR_FRAMES;
-        Audio_PlaySfx(EN_BEN_LAUGH_SFX);
-        EnBen_Vanish(this);
+    this->directorTimer++;
+
+    switch (this->directorStep) {
+        case 0:
+            if (Message_GetState(&play->msgCtx) == TEXT_STATE_CLOSING) {
+                this->hops = !Ben_UnhealingTaught(); // the first time, somebody remarks on it
+                Ben_TeachUnhealing();
+                this->directorStep = 1;
+                this->directorTimer = 0;
+            }
+            break;
+
+        case 1: // the melody, from it
+            if ((Ben_IsMelodyPlaying() && (this->directorTimer < EN_BEN_MELODY_LONGEST)) ||
+                (play->msgCtx.msgMode != MSGMODE_NONE)) {
+                break;
+            }
+            if (this->hops) {
+                Message_StartTextbox(play, BEN_TEXT_TAUGHT, NULL);
+                this->directorStep = 2;
+            } else {
+                this->directorStep = 3;
+            }
+            break;
+
+        case 2:
+            if (Message_GetState(&play->msgCtx) == TEXT_STATE_CLOSING) {
+                this->directorStep = 3;
+            }
+            break;
+
+        default:
+            Player_SetCsAction(play, &this->actor, PLAYER_CSACTION_END);
+            Play_EnableMotionBlur(EN_BEN_BLUR_ALPHA);
+            this->blurFrames = EN_BEN_BLUR_FRAMES;
+            Audio_PlaySfx(EN_BEN_LAUGH_SFX);
+            EnBen_Vanish(this);
+            break;
     }
 }
 
@@ -2134,9 +2200,25 @@ void EnBen_TowerScene(EnBen* this, PlayState* play) {
     }
 }
 
+#include "z_en_ben_seek.inc.c"
+#include "z_en_ben_children.inc.c"
+
 void EnBen_Update(Actor* thisx, PlayState* play) {
     EnBen* this = (EnBen*)thisx;
 
+    if (this->actor.params == BEN_ACTOR_UNHEALING) {
+        this->actionFunc(this, play);
+        if (this->faceFrames > 0) {
+            this->faceFrames--;
+        }
+        if (this->blurFrames > 0) {
+            this->blurFrames--;
+            if (this->blurFrames == 0) {
+                Play_DisableMotionBlur();
+            }
+        }
+        return;
+    }
     if (this->actor.params == BEN_ACTOR_LAIR) {
         EnBen_EmptyLair(play);
         this->actionFunc(this, play);
@@ -2175,6 +2257,9 @@ void EnBen_Update(Actor* thisx, PlayState* play) {
     }
 
     this->actionFunc(this, play);
+    if (this->actionFunc != EnBen_Seek) {
+        EnBen_StopTimer(this); // something else happened mid-game (the sea took you)
+    }
 
     EnBen_UpdateWhiteout(this, play);
     EnBen_UpdateGlitch(this, play);
@@ -2245,6 +2330,10 @@ void EnBen_Draw(Actor* thisx, PlayState* play) {
 
     if (BEN_FLASHES && (this->faceFrames > 0)) {
         EnBen_DrawFace(this, play);
+    }
+    if (this->actor.params == BEN_ACTOR_UNHEALING) {
+        EnBen_DrawUnhealing(this, play);
+        return;
     }
     if (this->isHidden) {
         return;

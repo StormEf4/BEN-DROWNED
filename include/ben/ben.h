@@ -52,6 +52,12 @@
 #define BEN_TEXT_HINT_STONE 0x4D17
 #define BEN_TEXT_HINT_TOWER 0x4D18
 #define BEN_TEXT_HINT_BOOT 0x4D19
+/* Hide and seek, and the Song of Unhealing's quest */
+#define BEN_TEXT_SEEK 0x4D20      // "Let's play hide and seek."
+#define BEN_TEXT_TAUGHT 0x4D21    // after the statue plays your song back to you, backwards
+#define BEN_TEXT_DONT_MOVE 0x4D22 // the Moon Child: stand still with us
+#define BEN_TEXT_NOT_YET 0x4D23   // the Song of Unhealing, played when there's nothing for it this session
+#define BEN_TEXT_SIGIL_1 0x4D24   // the phrase so far, as each sigil is stamped (one message per sigil)
 
 /* En_Ben params */
 #define BEN_ACTOR_STATUE 0   // the stalker statue
@@ -63,6 +69,7 @@
 #define BEN_ACTOR_MOON 6  // Session 5's end, on the Moon: the children's question, then Stone Tower
 #define BEN_ACTOR_WRONG 7 // Session 1: Clock Town, a little wrong. People stare, and one of them whispers
 #define BEN_ACTOR_TOWER 8 // Session 3: inside the Clock Tower, the Salesman says it again
+#define BEN_ACTOR_UNHEALING 9 // the Song of Unhealing was played here: the Moon Children answer (Ben_UpdateSongs)
 
 /* Which En_Ben (by params) the story puts in this scene right now, or -1 for none. Spawned by Play_Init. */
 s32 Ben_GetDirector(s16 sceneId);
@@ -113,6 +120,29 @@ void Sram_BenEndSessionBen(struct PlayState* play);
 #define BEN_FLAG_HEALING (1 << 5) // it's told you the Song of Healing doesn't work on it, this session
 s32 Ben_GetFlag(u8 flag);
 void Ben_SetFlag(u8 flag, s32 on);
+
+/* The Song of Unhealing (the Song of Healing backwards: C-Down, C-Right, C-Left, C-Down, C-Right, C-Left), and the
+ * Moon Children's quest it opens (STORY_BIBLE.md §5). The statue teaches it: play it the Song of Healing and it plays
+ * yours back to you, backwards. Every time it's played, a sigil task begins, one per session (the "nights"): the child
+ * no one sees, don't move, the wet feet. Each stamps a sigil and a word of the phrase. Ported from the Majora's Mask:
+ * WTF project's song kit (z_mod_song.c): heard in the message system's free play, beside the game's own songs. */
+#define BEN_SONG_UNHEALING 0x40 // what lastPlayedSong holds when it's played (past every song of the game's)
+#define BEN_SIGILS_BUILT 3      // sigils that have a task so far, of the seven
+s32 Ben_UnhealingKnown(void);   // it can be played (taught, or Session 4 and on)
+s32 Ben_UnhealingTaught(void);  // the statue has played it to you
+void Ben_TeachUnhealing(void);  // marks it known and plays its melody on the ocarina (the game's own playback)
+s32 Ben_IsMelodyPlaying(void);
+s32 Ben_GetSigils(void);
+s32 Ben_CanStampSigil(void); // another sigil is built, and none has been stamped this session
+void Ben_StampSigil(struct PlayState* play);
+/* In the message system's free play, every frame Link plays (z_message.c). True when it heard the Song of Unhealing. */
+s32 Ben_OnOcarina(struct PlayState* play);
+/* Every frame, before actors update (z_play.c): the melody's and the last note's ends, and what the song does. */
+void Ben_UpdateSongs(struct PlayState* play);
+
+/* Hide and seek: once a session, from Session 4 to 6 (STORY_BIBLE.md §4 rule 2: he plays games) */
+s32 Ben_HasPlayedSeek(void);
+void Ben_SetPlayedSeek(void);
 
 /* Tatl's C-up hint for where the story is, or 0 for her own (hooked into QuestHint_GetTatlTextId). */
 u16 Ben_GetHintTextId(struct PlayState* play);

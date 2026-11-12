@@ -32,6 +32,38 @@ every one of them ends in the Salesman's laugh. In Session 1 a townsperson whisp
 - **Erase the BEN file** at the file select and he laughs.
 - Flashing can be turned off with the builder's **Screen flashes** option (`BEN_FLASHES`).
 
+### Hide and seek (Sessions 4 to 6)
+
+Once a session, after you've seen it a couple of times, the statue is standing right in front of you instead:
+*"Let's play hide and seek. I hide. You look."* Black, and when the screen comes back it's gone and the HUD's clock is
+counting down from 1:15. It's hiding round a corner somewhere. A child's giggle comes from where it is: louder and more
+often the closer you get, and your heart starts when you're close.
+
+- **Find it** (see it from near enough, for half a second) and it laughs and is gone, leaving a red rupee where it
+  stood. It leaves you alone for a good while after that.
+- **Run out of time** and the screen goes black, and when it comes back it's standing right in front of you. That
+  counts as a sighting.
+
+### The Song of Unhealing (secret)
+
+**Learning it.** Play the Song of Healing at the statue. After *"That song doesn't work on me."* it plays your song
+back to you, backwards: **C-Down, C-Right, C-Left, C-Down, C-Right, C-Left**. From Session 4 on you can play it even if
+it never taught you.
+
+**Playing it.** Anywhere, with nothing else going on. The music goes and the colour drains, and the Moon Children answer
+with the next sigil, one a session ("another night"):
+
+| Sigil | What happens |
+|---|---|
+| 1 **The child no one sees** | A Moon Child in a torn white robe and a blank mask stands out there, its head tilted, watching you. Walk up to it and it's gone, then it giggles from further on. It leads you four times, and the last time it's standing on a glowing sigil. |
+| 2 **Don't move** | *"Stand still with us. If you move, he'll know where you are."* A minute on the HUD's clock. The child walks round and round you, its head always turned to you. Every few seconds the screen blinks (white in the snow) and the statue is somewhere new, closer; footsteps all round; his face, once. Move, and it's right in front of you (a sighting); play the song again to retry. |
+| 3 **The wet feet** | Small wet footprints appear in front of you, one step at a time, walking away. If you fall behind they wait. At the end the child stands with its back to you. Get close and its head turns all the way round. |
+
+Each ends with the sigil glowing, the moon's cry, and the Moon Children's phrase a word longer
+(**THE MOON SEES THE CHILD . . .**), with a line saying what to do next time. The sigil is written to the cartridge
+straight away. Played again the same session: *"...not tonight."* Sigils 4 to 7 and the CHILDREN epilogue
+(STORY_BIBLE.md §5) are still to come.
+
 ## Test script
 
 | # | Check |
@@ -53,9 +85,25 @@ every one of them ends in the Salesman's laugh. In Session 1 a townsperson whisp
 | 15 | Song of Healing at a statue you can see: its line once, a smear, the laugh. Played with no statue around: footsteps, then it's there |
 | 16 | Session 3: walk into the Clock Tower: the Salesman's line, the laugh |
 | 17 | Session 5 on: occasional colored flicker and a lurch in the music, sometimes the face. Off with the Screen flashes option |
+| 18 | Session 4: after two sightings, the statue in front of you: the hide and seek box, black, then the HUD clock at 1:15 and the giggle |
+| 19 | Find it before the clock runs out: chime, laugh, smear, a red rupee where it stood, and a long quiet after |
+| 20 | Let the clock run out (another session, or a fresh file): black, then it's right in front of you, his face for a frame, the laugh |
+| 21 | Song of Healing at the statue: its line, then the reversed melody plays on the ocarina, then "...Did you hear that?" |
+| 22 | Play C-Down, C-Right, C-Left twice: the correct chime, the music fades, grey. The Moon Child appears ahead; walk to it four times; the sigil, the moon's cry, "THE MOON . . ." |
+| 23 | Same session, play it again: "...not tonight." Next session, play it and stand still for the minute: the blinks, the statue closer each time, the sigil under your feet, "THE MOON SEES". Move once to check it catches you |
+| 24 | Next session: footprints walk away from you and wait when you stop; the child at the end turns its head round; the sigil, "THE MOON SEES THE CHILD" |
 
 ## Tuning
 
 All in `src/overlays/actors/ovl_En_Ben/z_en_ben.c`: `EN_BEN_END_SIGHTINGS` (when the ending comes to you),
 `EN_BEN_DREAM_SIGHTINGS`, `EN_BEN_SEA_DEPTH` (if the open sea never takes you, lower it), `EN_BEN_WHITEOUT_*`, and the
 Salesman scene's `EN_BEN_SALESMAN_*`. Where each session puts you is `Ben_WarpToSession` in `src/ben/ben_core.c`.
+Hide and seek's numbers are `EN_BEN_SEEK_*` in `z_en_ben_seek.inc.c`; the sigil tasks' are `EN_BEN_CHILD_*`,
+`EN_BEN_STILL_*` and `EN_BEN_FEET_*` in `z_en_ben_children.inc.c`.
+
+## Models
+
+The Moon Child, the sigil and the footprints are built in Python with the model kit copied from the Majora's Mask: WTF
+project (`tools/ben/modelkit.py`): edit `tools/ben/gen_ben_models.py` and run it, never the generated
+`z_en_ben_models.inc.c`. `tools/ben/preview_model.py` renders one to a PNG without the game, for example
+`python3 tools/ben/preview_model.py src/overlays/actors/ovl_En_Ben/z_en_ben_models.inc.c child.png sMoonChildBodyDL "sMoonChildHeadDL@0,3200,0,0,0,0,1"`.
