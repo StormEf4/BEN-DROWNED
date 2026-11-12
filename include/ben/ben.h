@@ -31,13 +31,20 @@
 #define BEN_TEXT_SHOULDNT_HAVE 0x4D01 // "YOU SHOULDN'T HAVE DONE THAT." after the Song of Time
 #define BEN_TEXT_STONE 0x4D02         // the garbled box on BEN's file at Stone Tower
 #define BEN_TEXT_SALESMAN 0x4D03      // Session 3: the Happy Mask Salesman, behind Deku Link in South Clock Town
+#define BEN_TEXT_COLD 0x4D04          // Session 4's end, at Darmani's grave
+#define BEN_TEXT_MOON 0x4D05          // Session 5's end, on the Moon: "Your friend is waiting at the stone tower."
+#define BEN_TEXT_DREAM 0x4D06         // Session 6's end: being made into a statue
+#define BEN_TEXT_LETS_PLAY 0x4D07     // Session 7, on the Clock Tower
+#define BEN_TEXT_COUNTER 0x4D08       // the end: "The counter resets. I'm glad you did that."
 
 /* En_Ben params */
 #define BEN_ACTOR_STATUE 0   // the stalker statue
 #define BEN_ACTOR_LAIR 1     // invisible director for the 4th-day visit to Majora's lair
 #define BEN_ACTOR_BOOT 2     // BEN's own file at Stone Tower: the statue, and the game giving out
 #define BEN_ACTOR_SALESMAN 3 // Session 3: forced Deku form, a strange camera, the Salesman, the cut to Termina Field
-#define BEN_ACTOR_THRONE 4   // Session 3's end: the statue in the Deku King's chamber, then BEN / DROWNED
+#define BEN_ACTOR_FINALE 4   // a session's end: it waits somewhere, and when you reach it the session is over
+#define BEN_ACTOR_WARP 5 // Sessions 4-6: South Clock Town is closed. A laugh, a flash, and you're back where he wants
+#define BEN_ACTOR_MOON 6 // Session 5's end, on the Moon: the children's question, then Stone Tower
 
 /* Which En_Ben (by params) the story puts in this scene right now, or -1 for none. Spawned by Play_Init. */
 s32 Ben_GetDirector(s16 sceneId);
@@ -66,6 +73,13 @@ void Ben_SetStep(s32 step);
 /* Session 3 (BEN) steps */
 #define BEN_STEP3_ARRIVE 0 // dawn in South Clock Town, as a Deku scrub, and the Salesman
 #define BEN_STEP3_FIELD 1  // out in Termina Field and on to the swamp
+/* Session 5 (DROWNED) steps */
+#define BEN_STEP5_SEA 0  // Great Bay, until you drown out at sea
+#define BEN_STEP5_MOON 1 // then the Moon
+/* Session 7 (free) steps */
+#define BEN_STEP7_NIGHT 0 // the Night of the Final Day in Clock Town, and the Clock Tower
+#define BEN_STEP7_LAIR 1  // "Let's play." in Majora's lair
+#define BEN_STEP7_DONE 2  // it's over; the file is BEN's now
 
 struct PlayState;
 /* Session 2 is over ("YOU SHOULDN'T HAVE DONE THAT."). Turns Link into a Deku scrub and starts Session 3. */
@@ -75,6 +89,29 @@ void Ben_BecomeDrowned(void);
 /* ...and saved as if the Song of Time were played, with BEN written into the other slot if it's empty (C15).
  * In z_sram_NES.c. Writes synchronously: the game hangs for a moment, which is the point. */
 void Sram_BenEndSessionBen(struct PlayState* play);
+
+/* Move the story on to another session and write it to the file right away (just the story: the rest of the save is
+ * left as it was last saved), so turning the game off doesn't undo it. */
+void Ben_AdvanceSession(struct PlayState* play, s32 session);
+void Sram_BenCommitStory(struct PlayState* play);
+/* Sessions 4-6 happen somewhere else. Leave for wherever the current session is, in a white flash. */
+void Ben_WarpToSession(struct PlayState* play);
+/* The end (STORY_BIBLE.md C21): the file is renamed BEN and becomes his, saved like the Song of Time. */
+void Ben_BecomeBen(void);
+void Sram_BenEndGame(struct PlayState* play);
+
+/* Session 6 and on: losing control of Link (STORY_BIBLE.md §4a tier 4). Applied to the controller every frame before
+ * actors update; set by En_Ben and put back to normal when it leaves the scene. */
+typedef enum BenInputMode {
+    /* 0 */ BEN_INPUT_NORMAL,
+    /* 1 */ BEN_INPUT_SLOW,     // the stick barely moves him
+    /* 2 */ BEN_INPUT_INVERTED, // the stick is backwards
+    /* 3 */ BEN_INPUT_REFUSED   // nothing but Start
+} BenInputMode;
+
+struct Input;
+void Ben_SetInputMode(s32 mode);
+void Ben_FilterInput(struct Input* input);
 
 /* K2: name shown wherever text uses the player-name control code. Same 8-char encoding as playerName. */
 const char* Ben_GetPlayerName(void);

@@ -1930,6 +1930,61 @@ void Sram_BenEndSessionBen(PlayState* play) {
     Sram_SyncWriteToFlash(sramCtx, gFlashSaveStartPages[otherFile * 2], gFlashSpecialSaveNumPages[otherFile * 2]);
 }
 
+/**
+ * BEN: write the story (and only the story) into this file's cycle save, both copies, so a session that has moved on
+ * stays moved on even if the game is turned off before it next saves. Everything else in the save stays as it was.
+ */
+void Sram_BenCommitStory(PlayState* play) {
+    SramContext* sramCtx = &play->sramCtx;
+    s32 copy;
+    s32 i;
+
+    if ((gSaveContext.fileNum == 0xFF) || !gSaveContext.flashSaveAvailable) {
+        return;
+    }
+    if (SysFlashrom_Read(sramCtx->saveBuf, gFlashSaveStartPages[gSaveContext.fileNum * 2],
+                         gFlashSpecialSaveNumPages[gSaveContext.fileNum * 2]) != 0) {
+        return;
+    }
+
+    for (copy = 0; copy < 2; copy++) {
+        Save* save = (Save*)&sramCtx->saveBuf[copy * 0x2000];
+
+        for (i = 0; i < 6; i++) {
+            if (save->saveInfo.playerData.newf[i] != "ZELDA3"[i]) {
+                break;
+            }
+        }
+        if (i != 6) {
+            continue; // not a save
+        }
+        Lib_MemCpy(save->saveInfo.unk_DF4, gSaveContext.save.saveInfo.unk_DF4, sizeof(save->saveInfo.unk_DF4));
+        save->saveInfo.checksum = 0;
+        save->saveInfo.checksum = Sram_CalcChecksum(save, sizeof(Save));
+    }
+    SysFlashrom_WriteSync(sramCtx->saveBuf, gFlashSaveStartPages[gSaveContext.fileNum * 2],
+                          gFlashSpecialSaveNumPages[gSaveContext.fileNum * 2]);
+}
+
+/**
+ * BEN: the end (STORY_BIBLE.md C21). The counter resets: the file is saved the way the Song of Time saves it, renamed
+ * BEN, and from now on it's his.
+ */
+void Sram_BenEndGame(PlayState* play) {
+    SramContext* sramCtx = &play->sramCtx;
+
+    Ben_BecomeBen();
+    Sram_SaveEndOfCycle(play);
+    gSaveContext.timerStates[TIMER_ID_MOON_CRASH] = TIMER_STATE_OFF;
+    func_8014546C(sramCtx);
+
+    if ((gSaveContext.fileNum == 0xFF) || !gSaveContext.flashSaveAvailable) {
+        return;
+    }
+    SysFlashrom_WriteSync(sramCtx->saveBuf, gFlashSaveStartPages[gSaveContext.fileNum * 2],
+                          gFlashSpecialSaveNumPages[gSaveContext.fileNum * 2]);
+}
+
 void Sram_WriteSaveOptionsToBuffer(SramContext* sramCtx) {
     if (gSaveContext.flashSaveAvailable) {
         gSaveContext.options.language = LANGUAGE_ENG;

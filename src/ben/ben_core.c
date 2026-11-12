@@ -122,7 +122,84 @@ s32 Ben_GetDirector(s16 sceneId) {
                     return BEN_ACTOR_STATUE;
 
                 case SCENE_DEKU_KING:
-                    return BEN_ACTOR_THRONE;
+                    return BEN_ACTOR_FINALE;
+
+                default:
+                    return -1;
+            }
+
+        case BEN_SESSION_COLD:
+            switch (sceneId) {
+                case SCENE_CLOCKTOWER:
+                    return BEN_ACTOR_WARP;
+
+                case SCENE_10YUKIYAMANOMURA: // Mountain Village, in winter
+                case SCENE_13HUBUKINOMITI:   // Path to Goron Village
+                case SCENE_14YUKIDAMANOMITI: // Path to Snowhead
+                case SCENE_12HAKUGINMAE:     // Snowhead
+                case SCENE_11GORONNOSATO:    // Goron Village
+                    return BEN_ACTOR_STATUE;
+
+                case SCENE_GORON_HAKA: // Goron Graveyard, where Darmani is buried
+                    return BEN_ACTOR_FINALE;
+
+                default:
+                    return -1;
+            }
+
+        case BEN_SESSION_DROWNED:
+            if (Ben_GetStep() == BEN_STEP5_MOON) {
+                return (sceneId == SCENE_SOUGEN) ? BEN_ACTOR_MOON
+                                                 : ((sceneId == SCENE_CLOCKTOWER) ? BEN_ACTOR_WARP : -1);
+            }
+            switch (sceneId) {
+                case SCENE_CLOCKTOWER:
+                    return BEN_ACTOR_WARP;
+
+                case SCENE_30GYOSON:   // Great Bay Coast
+                case SCENE_31MISAKI:   // Zora Cape
+                case SCENE_33ZORACITY: // Zora Hall
+                    return BEN_ACTOR_STATUE;
+
+                default:
+                    return -1;
+            }
+
+        case BEN_SESSION_STONE:
+            switch (sceneId) {
+                case SCENE_CLOCKTOWER:
+                    return BEN_ACTOR_WARP;
+
+                case SCENE_F40:   // Stone Tower
+                case SCENE_F41:   // Stone Tower, upside down
+                case SCENE_IKANA: // Ikana Canyon
+                case SCENE_BOTI:  // Ikana Graveyard
+                    return BEN_ACTOR_STATUE;
+
+                default:
+                    return -1;
+            }
+
+        case BEN_SESSION_FREE:
+            switch (Ben_GetStep()) {
+                case BEN_STEP7_NIGHT:
+                    switch (sceneId) {
+                        case SCENE_CLOCKTOWER:
+                        case SCENE_TOWN:
+                        case SCENE_ICHIBA:
+                        case SCENE_BACKTOWN:
+                        case SCENE_ALLEY:
+                            return BEN_ACTOR_STATUE;
+
+                        case SCENE_OKUJOU: // the top of the Clock Tower
+                            return BEN_ACTOR_FINALE;
+
+                        default:
+                            return -1;
+                    }
+
+                case BEN_STEP7_LAIR:
+                    return (sceneId == SCENE_LAST_BS) ? BEN_ACTOR_FINALE : -1;
 
                 default:
                     return -1;
@@ -130,6 +207,74 @@ s32 Ben_GetDirector(s16 sceneId) {
 
         default:
             return -1;
+    }
+}
+
+void Ben_AdvanceSession(PlayState* play, s32 session) {
+    Ben_SetSession(session);
+    Sram_BenCommitStory(play);
+}
+
+void Ben_WarpToSession(PlayState* play) {
+    switch (Ben_GetSession()) {
+        case BEN_SESSION_COLD:
+            play->nextEntrance = ENTRANCE(MOUNTAIN_VILLAGE_WINTER, 8); // by the owl statue
+            break;
+
+        case BEN_SESSION_DROWNED:
+            play->nextEntrance =
+                (Ben_GetStep() == BEN_STEP5_MOON) ? ENTRANCE(THE_MOON, 0) : ENTRANCE(GREAT_BAY_COAST, 11);
+            break;
+
+        case BEN_SESSION_STONE:
+            play->nextEntrance = ENTRANCE(STONE_TOWER, 3);
+            break;
+
+        default:
+            return;
+    }
+    play->transitionTrigger = TRANS_TRIGGER_START;
+    play->transitionType = TRANS_TYPE_FADE_WHITE;
+}
+
+void Ben_BecomeBen(void) {
+    s32 i;
+
+    for (i = 0; i < ARRAY_COUNT(gSaveContext.save.saveInfo.playerData.playerName); i++) {
+        gSaveContext.save.saveInfo.playerData.playerName[i] = sBenName[i];
+    }
+    gSaveContext.save.playerForm = PLAYER_FORM_HUMAN;
+    Ben_SetSession(BEN_SESSION_FREE);
+    Ben_SetStep(BEN_STEP7_DONE);
+    Ben_SetFlag(BEN_FLAG_BOOT_FILE, true); // from now on it opens at Stone Tower, like his did
+}
+
+static s32 sBenInputMode = BEN_INPUT_NORMAL;
+
+void Ben_SetInputMode(s32 mode) {
+    sBenInputMode = mode;
+}
+
+void Ben_FilterInput(Input* input) {
+    switch (sBenInputMode) {
+        case BEN_INPUT_SLOW:
+            input->rel.stick_x /= 4;
+            input->rel.stick_y /= 4;
+            break;
+
+        case BEN_INPUT_INVERTED:
+            input->rel.stick_x = -input->rel.stick_x;
+            input->rel.stick_y = -input->rel.stick_y;
+            break;
+
+        case BEN_INPUT_REFUSED:
+            input->rel.stick_x = 0;
+            input->rel.stick_y = 0;
+            input->press.button &= BTN_START;
+            break;
+
+        default:
+            break;
     }
 }
 
@@ -254,6 +399,7 @@ void Ben_OpenBootFile(void) {
 }
 
 void Ben_CrashToTitle(PlayState* play) {
+    // En_Ben's Destroy puts the screen and the controller back when the scene is torn down.
     STOP_GAMESTATE(&play->state);
     SET_NEXT_GAMESTATE(&play->state, TitleSetup_Init, sizeof(TitleSetupState));
     Audio_MuteAllSeqExceptSystemAndOcarina(0);

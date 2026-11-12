@@ -121,10 +121,32 @@
 #define EN_BEN_SALESMAN_TEMPO_SCALE 55   // Session 3: his theme, slowed (percent)
 #define EN_BEN_SALESMAN_FREQ_SCALE 700   // and lowered (1000 = normal)
 
-#define EN_BEN_THRONE_DIST 350.0f // Session 3's end: how far in front of you it stands in the Deku King's chamber
-#define EN_BEN_THRONE_NEAR 180.0f // walk this close to it
-#define EN_BEN_THRONE_STARE 100   // or look at it this long (5 s)
-#define EN_BEN_THRONE_GIVE_OUT 40 // then the screen goes, and the game saves and gives out
+#define EN_BEN_FINALE_DIST 350.0f // Session 3's end: how far in front of you it stands in the Deku King's chamber
+#define EN_BEN_FINALE_NEAR 180.0f // walk this close to it
+#define EN_BEN_FINALE_STARE 100   // or look at it this long (5 s)
+#define EN_BEN_FINALE_GIVE_OUT 40 // then the screen goes, and the game saves and gives out
+
+#define EN_BEN_END_SIGHTINGS 7    // Sessions 4 and 7: if you haven't found the end by this many sightings, it finds you
+#define EN_BEN_WHITEOUT_FRAMES 40 // Session 4: a whiteout, start to finish
+#define EN_BEN_WHITEOUT_PEAK 20   // the frame it's all white, and it moves
+#define EN_BEN_SEA_DEPTH 400.0f   // Session 5: water deeper than this is the open sea
+#define EN_BEN_SEA_FRAMES 60      // swim out there this long (3 s) and it takes you
+#define EN_BEN_SEA_STATUE 140.0f  // and it's standing on the water this close in front of you
+#define EN_BEN_SEA_FLASH 40       // then a red flash, his laugh
+#define EN_BEN_SEA_LEAVE 75       // then the Moon
+#define EN_BEN_MOON_DELAY 80      // Session 5's end: how long you're on the Moon before they ask
+#define EN_BEN_MOON_LEAVE 60      // after the question, how long before Stone Tower
+#define EN_BEN_WARP_DELAY 40      // Sessions 4-6: how long South Clock Town lasts
+#define EN_BEN_DREAM_SIGHTINGS 6  // Session 6: the dream comes after this many sightings
+#define EN_BEN_DREAM_DIST 320.0f  // where it stands to begin with
+#define EN_BEN_DREAM_STEP 55      // it comes closer this often, while you watch
+#define EN_BEN_DREAM_INVERT 120   // then the stick is backwards
+#define EN_BEN_DREAM_REFUSE 240   // then nothing works
+#define EN_BEN_DREAM_SPEAK 300    // then it speaks
+#define EN_BEN_WATCH_STEP 45      // Session 7: watch it this long and it moves anyway
+#define EN_BEN_LAST_DIST 600.0f   // in Majora's lair: where it starts
+#define EN_BEN_LAST_STEP 30       // how often it comes closer, whatever you do
+#define EN_BEN_LAST_NEAR 140.0f   // and how close it gets before the end
 
 #define EN_BEN_REWOUND_TEMPO_SCALE 45
 #define EN_BEN_REWOUND_FREQ_SCALE 650
@@ -145,9 +167,16 @@ void EnBen_Burning(EnBen* this, PlayState* play);
 void EnBen_FateLine(EnBen* this, PlayState* play);
 void EnBen_FateLineSpeaking(EnBen* this, PlayState* play);
 void EnBen_SalesmanScene(EnBen* this, PlayState* play);
-void EnBen_Throne(EnBen* this, PlayState* play);
+void EnBen_Finale(EnBen* this, PlayState* play);
 u16 EnBen_GetSceneSeq(EnBen* this, PlayState* play);
 void EnBen_SetSceneSeq(EnBen* this, PlayState* play);
+void EnBen_WarpAway(EnBen* this, PlayState* play);
+void EnBen_MoonScene(EnBen* this, PlayState* play);
+void EnBen_Drowning(EnBen* this, PlayState* play);
+void EnBen_Dream(EnBen* this, PlayState* play);
+void EnBen_LastGame(EnBen* this, PlayState* play);
+s32 EnBen_EndComes(EnBen* this, PlayState* play);
+s32 EnBen_TryPlaceInWhiteout(EnBen* this, PlayState* play);
 
 ActorProfile En_Ben_Profile = {
     /**/ ACTOR_EN_BEN,
@@ -431,8 +460,8 @@ s32 EnBen_TryAppear(EnBen* this, PlayState* play) {
 
     this->kind = EN_BEN_SIGHTING_STILL;
     this->trailCount = 0;
-    if (this->actor.params == BEN_ACTOR_BOOT) {
-        this->kind = EN_BEN_SIGHTING_CREEP; // on its own file it doesn't bother leaving
+    if ((this->actor.params == BEN_ACTOR_BOOT) || (Ben_GetSession() == BEN_SESSION_FREE)) {
+        this->kind = EN_BEN_SIGHTING_CREEP; // on its own file, and at the end, it doesn't bother leaving
     } else if ((Ben_GetFate() == BEN_FATE_NONE) || (Ben_GetFate() == BEN_FATE_DONE)) {
         if ((sightings >= EN_BEN_TRAIL_SIGHTING) && !Ben_HasSeenTrail() && EnBen_TryPlaceTrail(this, play)) {
             this->kind = EN_BEN_SIGHTING_TRAIL;
@@ -621,14 +650,17 @@ void EnBen_Init(Actor* thisx, PlayState* play) {
         this->actionFunc = EnBen_LairWait;
         return;
     }
-    if (this->actor.params == BEN_ACTOR_SALESMAN) {
-        // Dawn, and no music at all.
+    if ((this->actor.params == BEN_ACTOR_SALESMAN) || (this->actor.params == BEN_ACTOR_WARP) ||
+        (this->actor.params == BEN_ACTOR_MOON)) {
+        // Directors with no body. Dawn, or the Moon, and no music at all.
         play->sceneSequences.seqId = NA_BGM_NO_MUSIC;
         this->isHidden = true;
         this->directorStep = 0;
         this->directorTimer = 0;
         this->other = NULL;
-        this->actionFunc = EnBen_SalesmanScene;
+        this->actionFunc = (this->actor.params == BEN_ACTOR_SALESMAN) ? EnBen_SalesmanScene
+                           : (this->actor.params == BEN_ACTOR_WARP)   ? EnBen_WarpAway
+                                                                      : EnBen_MoonScene;
         return;
     }
 
@@ -638,7 +670,8 @@ void EnBen_Init(Actor* thisx, PlayState* play) {
     this->actor.gravity = -1.0f;
     this->musicCooldown = 0;
     this->musicWarped = false;
-    this->isConfronting = BEN_DEMO_TEASER && Ben_HasRewound() && !Ben_HasWarned();
+    this->isConfronting =
+        BEN_DEMO_TEASER && (Ben_GetDayFour() == BEN_DAY_FOUR_HAUNTED) && Ben_HasRewound() && !Ben_HasWarned();
     this->drownFrames = 0;
     this->kind = EN_BEN_SIGHTING_STILL;
     this->glimpseAt = -1;
@@ -650,7 +683,16 @@ void EnBen_Init(Actor* thisx, PlayState* play) {
     this->pathCount = 0;
     this->trailCount = 0;
     this->blurFrames = 0;
+    this->whiteFrames = 0;
+    this->watchFrames = 0;
+    this->inWhiteout = false;
     this->isStaring = false;
+    if ((Ben_GetSession() == BEN_SESSION_FREE) && (gSaveContext.save.day < 3)) {
+        // Session 7 is the Night of the Final Day, however you got here. The counter is wrong.
+        gSaveContext.save.day = 3;
+        gSaveContext.save.time = CLOCK_TIME(23, 0);
+        gSaveContext.save.isNight = true;
+    }
     this->stoppedTime = gSaveContext.save.time;
     this->grey = EN_BEN_GREY_MOST * EnBen_GetDread(); // already this grey as you walk in
     if (Ben_GetFate() == BEN_FATE_BURNING) {
@@ -672,10 +714,10 @@ void EnBen_Init(Actor* thisx, PlayState* play) {
     } else if (Ben_GetFate() == BEN_FATE_DROWNED) {
         this->timer = EN_BEN_DROWNED_DELAY;
         this->actionFunc = EnBen_Lurk;
-    } else if (this->actor.params == BEN_ACTOR_THRONE) {
+    } else if (this->actor.params == BEN_ACTOR_FINALE) {
         this->directorStep = 0;
         this->directorTimer = 0;
-        this->actionFunc = EnBen_Throne;
+        this->actionFunc = (play->sceneId == SCENE_LAST_BS) ? EnBen_LastGame : EnBen_Finale;
     } else if (this->actor.params == BEN_ACTOR_BOOT) {
         this->directorStep = 0;
         this->directorTimer = 0;
@@ -690,7 +732,12 @@ void EnBen_Init(Actor* thisx, PlayState* play) {
 void EnBen_Destroy(Actor* thisx, PlayState* play) {
     EnBen* this = (EnBen*)thisx;
 
-    if (this->actor.params == BEN_ACTOR_LAIR) {
+    // Whatever it was doing to you stops when you leave.
+    Ben_SetInputMode(BEN_INPUT_NORMAL);
+    Play_FillScreen(play, false, 0, 0, 0, 0);
+
+    if ((this->actor.params == BEN_ACTOR_LAIR) || (this->actor.params == BEN_ACTOR_WARP) ||
+        (this->actor.params == BEN_ACTOR_MOON)) {
         return;
     }
     if (this->actor.params == BEN_ACTOR_SALESMAN) {
@@ -719,24 +766,25 @@ void EnBen_Destroy(Actor* thisx, PlayState* play) {
 }
 
 /**
- * Silence until the first sighting. After it, the Song of Healing, slowed and pitched down (more so after the Song
- * of Time), whatever else tries to start music.
- */
-/**
  * What should be playing here, or NA_BGM_DISABLED for silence.
  *  - The 4th day: nothing until the first sighting, then a slowed, pitched-down Song of Healing.
  *  - Session 3: the Happy Mask Salesman's theme, slowed and lowered, in Termina Field and on the road to the swamp
  *    (STORY_BIBLE.md C14). The swamp and Deku Palace are silent.
- *  - BEN's own file: silence.
+ *  - Session 7: the Final Hours, slowed and lowered.
+ *  - Otherwise, as on the 4th day.
+ *  - BEN's own file, and wherever a session ends: silence.
  */
 u16 EnBen_GetSceneSeq(EnBen* this, PlayState* play) {
-    if ((this->actor.params == BEN_ACTOR_BOOT) || (this->actor.params == BEN_ACTOR_THRONE)) {
+    if ((this->actor.params == BEN_ACTOR_BOOT) || (this->actor.params == BEN_ACTOR_FINALE)) {
         return NA_BGM_DISABLED;
     }
     if (Ben_GetSession() == BEN_SESSION_BEN) {
         return ((play->sceneId == SCENE_00KEIKOKU) || (play->sceneId == SCENE_24KEMONOMITI))
                    ? NA_BGM_HAPPY_MASK_SALESMAN
                    : NA_BGM_DISABLED;
+    }
+    if (Ben_GetSession() == BEN_SESSION_FREE) {
+        return NA_BGM_FINAL_HOURS;
     }
     return (Ben_GetSightings() > 0) ? NA_BGM_SONG_OF_HEALING : NA_BGM_DISABLED;
 }
@@ -815,7 +863,18 @@ void EnBen_Lurk(EnBen* this, PlayState* play) {
     if (this->glimpseFrames > 0) {
         return;
     }
-    if (EnBen_TryAppear(this, play)) {
+    if (EnBen_EndComes(this, play)) {
+        return;
+    }
+    if ((Ben_GetSession() == BEN_SESSION_COLD) && !this->inWhiteout) {
+        // Session 4: the snow comes in first, and when it clears, it's there.
+        this->inWhiteout = true;
+        this->whiteFrames = EN_BEN_WHITEOUT_FRAMES;
+        this->timer = EN_BEN_WHITEOUT_FRAMES - EN_BEN_WHITEOUT_PEAK;
+        return;
+    }
+    if (this->inWhiteout ? EnBen_TryPlaceInWhiteout(this, play) : EnBen_TryAppear(this, play)) {
+        this->inWhiteout = false;
         this->isHidden = false;
         this->isNoticed = false;
         this->seenFrames = 0;
@@ -824,8 +883,11 @@ void EnBen_Lurk(EnBen* this, PlayState* play) {
         this->stareFrames = 0;
         this->timer = EN_BEN_PATIENCE;
         this->actionFunc = EnBen_Stand;
-    } else {
+    } else if (this->inWhiteout && (this->whiteFrames == 0)) {
+        this->inWhiteout = false; // nowhere to stand this time; the snow clears on nothing
         this->timer = EN_BEN_RETRY_FRAMES;
+    } else {
+        this->timer = this->inWhiteout ? 0 : EN_BEN_RETRY_FRAMES;
     }
 }
 
@@ -899,6 +961,16 @@ void EnBen_Creep(EnBen* this, PlayState* play, s32 visible) {
             this->stareFrames++;
             if (this->stareFrames >= EN_BEN_CREEP_STARE) {
                 EnBen_Leave(this);
+            }
+        } else if (Ben_GetSession() == BEN_SESSION_FREE) {
+            // Session 7: the rules are off. It moves while you watch.
+            this->watchFrames++;
+            if ((this->watchFrames >= EN_BEN_WATCH_STEP) &&
+                EnBen_FindSpot(play, player, Math_Vec3f_Yaw(&player->actor.world.pos, &this->actor.world.pos),
+                               CLAMP_MIN(dist * EN_BEN_CREEP_STEP, EN_BEN_CREEP_CLOSEST), &pos)) {
+                EnBen_PlaceAt(this, play, &pos);
+                Actor_PlaySfx(&this->actor, EN_BEN_STEP_SFX);
+                this->watchFrames = 0;
             }
         }
         return;
@@ -1026,8 +1098,8 @@ void EnBen_FateLineSpeaking(EnBen* this, PlayState* play) {
 void EnBen_CheckDrowning(EnBen* this, PlayState* play) {
     Player* player = GET_PLAYER(play);
 
-    if ((play->sceneId != SCENE_ALLEY) || (Ben_GetFate() != BEN_FATE_NONE) ||
-        (play->transitionTrigger != TRANS_TRIGGER_OFF)) {
+    if ((play->sceneId != SCENE_ALLEY) || (Ben_GetDayFour() != BEN_DAY_FOUR_HAUNTED) ||
+        (Ben_GetFate() != BEN_FATE_NONE) || (play->transitionTrigger != TRANS_TRIGGER_OFF)) {
         return;
     }
 
@@ -1213,7 +1285,7 @@ void EnBen_SalesmanScene(EnBen* this, PlayState* play) {
  * it or look at it too long, and the game gives out. When it comes back, your file is called DROWNED, and BEN is in
  * the other slot (STORY_BIBLE.md C15).
  */
-void EnBen_Throne(EnBen* this, PlayState* play) {
+void EnBen_Finale(EnBen* this, PlayState* play) {
     static f32 sScales[] = { 1.0f, 0.75f, 0.5f };
     Player* player = GET_PLAYER(play);
     Vec3f pos;
@@ -1228,7 +1300,7 @@ void EnBen_Throne(EnBen* this, PlayState* play) {
                 break;
             }
             for (i = 0; i < ARRAY_COUNT(sScales); i++) {
-                if (EnBen_FindSpot(play, player, player->actor.shape.rot.y, EN_BEN_THRONE_DIST * sScales[i], &pos)) {
+                if (EnBen_FindSpot(play, player, player->actor.shape.rot.y, EN_BEN_FINALE_DIST * sScales[i], &pos)) {
                     EnBen_PlaceAt(this, play, &pos);
                     this->isHidden = false;
                     this->kind = EN_BEN_SIGHTING_STILL;
@@ -1245,7 +1317,7 @@ void EnBen_Throne(EnBen* this, PlayState* play) {
             if (EnBen_IsAnyVisible(this, play)) {
                 this->seenFrames++;
             }
-            if ((this->seenFrames >= EN_BEN_THRONE_STARE) || (this->actor.xzDistToPlayer < EN_BEN_THRONE_NEAR)) {
+            if ((this->seenFrames >= EN_BEN_FINALE_STARE) || (this->actor.xzDistToPlayer < EN_BEN_FINALE_NEAR)) {
                 Player_SetCsActionWithHaltedActors(play, &this->actor, PLAYER_CSACTION_WAIT);
                 Play_EnableMotionBlur(EN_BEN_BOOT_BLUR_ALPHA);
                 this->blurFrames = 0x7FFF; // Destroy turns it off
@@ -1255,10 +1327,438 @@ void EnBen_Throne(EnBen* this, PlayState* play) {
             }
             break;
 
-        case 2: // and the game gives out
-            if (this->directorTimer >= EN_BEN_THRONE_GIVE_OUT) {
-                this->directorStep = 3;
+        case 2:
+            if (this->directorTimer < EN_BEN_FINALE_GIVE_OUT) {
+                break;
+            }
+            if (Ben_GetSession() == BEN_SESSION_BEN) {
+                // The game gives out. When it comes back: BEN, and DROWNED.
+                this->directorStep = 5;
                 Sram_BenEndSessionBen(play);
+                Ben_CrashToTitle(play);
+                break;
+            }
+            Message_StartTextbox(play, (Ben_GetSession() == BEN_SESSION_COLD) ? BEN_TEXT_COLD : BEN_TEXT_LETS_PLAY,
+                                 NULL);
+            this->directorStep = 3;
+            break;
+
+        case 3:
+            if (Message_GetState(&play->msgCtx) == TEXT_STATE_CLOSING) {
+                Audio_PlaySfx(EN_BEN_LAUGH_SFX);
+                this->directorStep = 4;
+                this->directorTimer = 0;
+            }
+            break;
+
+        case 4:
+            if (this->directorTimer < EN_BEN_SALESMAN_CUT_FRAMES) {
+                break;
+            }
+            this->directorStep = 5;
+            if (Ben_GetSession() == BEN_SESSION_COLD) {
+                Ben_AdvanceSession(play, BEN_SESSION_DROWNED); // Session 5: Great Bay
+                Ben_WarpToSession(play);
+            } else {
+                // Session 7: "Let's play." In Majora's lair.
+                Ben_SetStep(BEN_STEP7_LAIR);
+                Sram_BenCommitStory(play);
+                play->nextEntrance = ENTRANCE(MAJORAS_LAIR, 0);
+                play->transitionTrigger = TRANS_TRIGGER_START;
+                play->transitionType = TRANS_TYPE_FADE_WHITE;
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
+/**
+ * Sessions 4 and 7: if you haven't come to the end, it comes to you. Session 6: the dream. Returns true if the next
+ * appearance is that.
+ */
+s32 EnBen_EndComes(EnBen* this, PlayState* play) {
+    if ((this->actor.params != BEN_ACTOR_STATUE) || (Ben_GetFate() != BEN_FATE_NONE)) {
+        return false;
+    }
+    switch (Ben_GetSession()) {
+        case BEN_SESSION_COLD:
+        case BEN_SESSION_FREE:
+            if (Ben_GetSightings() < EN_BEN_END_SIGHTINGS) {
+                return false;
+            }
+            this->actionFunc = EnBen_Finale;
+            break;
+
+        case BEN_SESSION_STONE:
+            if (Ben_GetSightings() < EN_BEN_DREAM_SIGHTINGS) {
+                return false;
+            }
+            this->actionFunc = EnBen_Dream;
+            break;
+
+        default:
+            return false;
+    }
+    this->directorStep = 0;
+    this->directorTimer = 0;
+    this->inWhiteout = false;
+    return true;
+}
+
+/**
+ * Session 4: while the snow is all you can see, it stands in front of you, about as far off as this sighting calls for.
+ */
+s32 EnBen_TryPlaceInWhiteout(EnBen* this, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+    s16 yaw = Camera_GetCamDirYaw(GET_ACTIVE_CAM(play));
+    f32 dist = sSightingDistances[CLAMP_MAX(Ben_GetSightings(), ARRAY_COUNT(sSightingDistances) - 1)] * 0.5f;
+    Vec3f pos;
+    s32 d;
+
+    for (d = 0; d < ARRAY_COUNT(sDistanceScales); d++) {
+        if (EnBen_FindSpot(play, player, yaw, dist * sDistanceScales[d], &pos)) {
+            EnBen_PlaceAt(this, play, &pos);
+            this->kind = EN_BEN_SIGHTING_STILL;
+            this->trailCount = 0;
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Session 4: the blizzard. White, all the way, for a moment.
+ */
+void EnBen_UpdateWhiteout(EnBen* this, PlayState* play) {
+    s32 alpha;
+
+    if (this->whiteFrames <= 0) {
+        return;
+    }
+    this->whiteFrames--;
+    Audio_PlaySfx(NA_SE_EV_SNOWSTORM_HARD - SFX_FLAG);
+    if (this->whiteFrames == 0) {
+        Play_FillScreen(play, false, 0, 0, 0, 0);
+        return;
+    }
+    // In over 16 frames, all white for 8, out over 16.
+    alpha = (this->whiteFrames >= 24)   ? ((EN_BEN_WHITEOUT_FRAMES - this->whiteFrames) * 16)
+            : (this->whiteFrames >= 16) ? 255
+                                        : (this->whiteFrames * 16);
+    Play_FillScreen(play, true, 235, 240, 255, CLAMP_MAX(alpha, 255));
+}
+
+/**
+ * Who else is here. Nobody, in Clock Town on the 4th day and at the end, or in Deku Palace, or by Darmani's grave.
+ * Elsewhere people are where they always are (Mikau is still washed up on the beach).
+ */
+void EnBen_EmptyScene(EnBen* this, PlayState* play) {
+    if ((this->actor.params == BEN_ACTOR_BOOT) || Ben_IsHauntedScene(play->sceneId)) {
+        EnBen_EmptyTown(play);
+        return;
+    }
+    switch (Ben_GetSession()) {
+        case BEN_SESSION_BEN:
+            if ((play->sceneId == SCENE_22DEKUCITY) || (play->sceneId == SCENE_DEKU_KING)) {
+                EnBen_EmptyTown(play);
+            }
+            break;
+
+        case BEN_SESSION_COLD:
+            if (play->sceneId == SCENE_GORON_HAKA) {
+                EnBen_EmptyTown(play);
+            }
+            break;
+
+        case BEN_SESSION_FREE:
+            if ((play->sceneId == SCENE_OKUJOU) || (play->sceneId == SCENE_LAST_BS)) {
+                EnBen_EmptyLair(play); // not even Skull Kid, not even the Mask
+            } else {
+                EnBen_EmptyTown(play);
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
+/**
+ * Session 5 (STORY_BIBLE.md C16): swim out into the open sea and it takes you.
+ */
+void EnBen_CheckSea(EnBen* this, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+
+    if ((this->actor.params != BEN_ACTOR_STATUE) || (Ben_GetSession() != BEN_SESSION_DROWNED) ||
+        (Ben_GetStep() != BEN_STEP5_SEA) || ((play->sceneId != SCENE_30GYOSON) && (play->sceneId != SCENE_31MISAKI)) ||
+        (this->actionFunc == EnBen_Drowning) || (play->transitionTrigger != TRANS_TRIGGER_OFF)) {
+        return;
+    }
+
+    // Out where it's deep. After enough sightings, anywhere you swim.
+    if ((player->actor.bgCheckFlags & BGCHECKFLAG_WATER) && (player->actor.depthInWater > EN_BEN_DROWN_DEPTH) &&
+        (((player->actor.world.pos.y - player->actor.floorHeight) > EN_BEN_SEA_DEPTH) ||
+         (Ben_GetSightings() >= EN_BEN_END_SIGHTINGS))) {
+        this->drownFrames++;
+    } else {
+        this->drownFrames = 0;
+    }
+
+    if (this->drownFrames >= EN_BEN_SEA_FRAMES) {
+        this->directorStep = 0;
+        this->directorTimer = 0;
+        this->actionFunc = EnBen_Drowning;
+    }
+}
+
+/**
+ * Session 5's end. It's standing on the water in front of you, and you go under. A red flash, his laugh, and you're
+ * on the Moon (STORY_BIBLE.md C16, C18).
+ */
+void EnBen_Drowning(EnBen* this, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+    Vec3f pos;
+
+    this->directorTimer++;
+    player->actor.freezeTimer = 2; // you can't swim away
+
+    switch (this->directorStep) {
+        case 0:
+            Player_PlaySfx(player, NA_SE_VO_LI_TAKEN_AWAY + player->ageProperties->voiceSfxIdOffset);
+            Audio_PlaySfx(NA_SE_OC_ABYSS);
+            pos = player->actor.world.pos;
+            pos.x += Math_SinS(player->actor.shape.rot.y) * EN_BEN_SEA_STATUE;
+            pos.z += Math_CosS(player->actor.shape.rot.y) * EN_BEN_SEA_STATUE;
+            pos.y += player->actor.depthInWater - 20.0f; // up to its knees in the sea
+            EnBen_PlaceAt(this, play, &pos);
+            this->actor.gravity = 0.0f; // it doesn't sink
+            this->isHidden = false;
+            this->trailCount = 0;
+            EnBen_SetStaring(this, true);
+            Play_EnableMotionBlur(EN_BEN_BOOT_BLUR_ALPHA);
+            this->blurFrames = 0x7FFF; // Destroy turns it off
+            this->directorStep = 1;
+            break;
+
+        case 1:
+            if (this->directorTimer == EN_BEN_SEA_FLASH) {
+                Play_FillScreen(play, true, 140, 0, 0, 255);
+                Audio_PlaySfx(EN_BEN_LAUGH_SFX);
+            } else if (this->directorTimer == (EN_BEN_SEA_FLASH + 3)) {
+                Play_FillScreen(play, false, 0, 0, 0, 0);
+            } else if (this->directorTimer >= EN_BEN_SEA_LEAVE) {
+                this->directorStep = 2;
+                Ben_SetStep(BEN_STEP5_MOON);
+                Sram_BenCommitStory(play);
+                Ben_WarpToSession(play);
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
+/**
+ * Sessions 4-6: you don't get to stay in Clock Town. Whenever you're back (the Song of Time, a game over, loading the
+ * file), his laugh and a white flash take you back to where the session is.
+ */
+void EnBen_WarpAway(EnBen* this, PlayState* play) {
+    this->directorTimer++;
+    if ((this->directorStep == 0) && (this->directorTimer >= EN_BEN_WARP_DELAY) &&
+        (play->transitionTrigger == TRANS_TRIGGER_OFF) && (play->transitionMode == TRANS_MODE_OFF) &&
+        (play->csCtx.state == CS_STATE_IDLE) && (play->msgCtx.msgMode == MSGMODE_NONE)) {
+        Audio_PlaySfx(EN_BEN_LAUGH_SFX);
+        Ben_WarpToSession(play);
+        this->directorStep = 1;
+    }
+}
+
+/**
+ * Session 5's end, on the Moon (STORY_BIBLE.md C18, 5 and a half). Silence, then the children's question, rewritten.
+ * Then Stone Tower.
+ */
+void EnBen_MoonScene(EnBen* this, PlayState* play) {
+    this->directorTimer++;
+
+    switch (this->directorStep) {
+        case 0:
+            if ((this->directorTimer >= EN_BEN_MOON_DELAY) && (play->transitionTrigger == TRANS_TRIGGER_OFF) &&
+                (play->transitionMode == TRANS_MODE_OFF) && (play->msgCtx.msgMode == MSGMODE_NONE)) {
+                Player_SetCsActionWithHaltedActors(play, &this->actor, PLAYER_CSACTION_WAIT);
+                Message_StartTextbox(play, BEN_TEXT_MOON, NULL);
+                this->directorStep = 1;
+            }
+            break;
+
+        case 1:
+            if (Message_GetState(&play->msgCtx) == TEXT_STATE_CLOSING) {
+                Player_SetCsAction(play, &this->actor, PLAYER_CSACTION_END);
+                this->directorStep = 2;
+                this->directorTimer = 0;
+            }
+            break;
+
+        case 2:
+            if (this->directorTimer >= EN_BEN_MOON_LEAVE) {
+                this->directorStep = 3;
+                Ben_AdvanceSession(play, BEN_SESSION_STONE); // Session 6
+                Ben_WarpToSession(play);
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
+/**
+ * Session 6's end (STORY_BIBLE.md C20): the dream where it makes you into a statue. It stands in front of you and
+ * comes closer while you watch. Link gets harder to move, then moves backwards, then won't move at all. Then it
+ * speaks, and the next thing you know it's the Night of the Final Day.
+ */
+void EnBen_Dream(EnBen* this, PlayState* play) {
+    static f32 sScales[] = { 1.0f, 0.75f, 0.5f };
+    Player* player = GET_PLAYER(play);
+    Vec3f pos;
+    s32 i;
+
+    this->directorTimer++;
+
+    switch (this->directorStep) {
+        case 0:
+            if ((play->csCtx.state != CS_STATE_IDLE) || (play->msgCtx.msgMode != MSGMODE_NONE)) {
+                break;
+            }
+            for (i = 0; i < ARRAY_COUNT(sScales); i++) {
+                if (EnBen_FindSpot(play, player, player->actor.shape.rot.y, EN_BEN_DREAM_DIST * sScales[i], &pos)) {
+                    EnBen_PlaceAt(this, play, &pos);
+                    this->isHidden = false;
+                    this->trailCount = 0;
+                    EnBen_SetStaring(this, true);
+                    Ben_SetInputMode(BEN_INPUT_SLOW);
+                    this->directorStep = 1;
+                    this->directorTimer = 0;
+                    break;
+                }
+            }
+            break;
+
+        case 1:
+            if (((this->directorTimer % EN_BEN_DREAM_STEP) == 0) &&
+                (this->actor.xzDistToPlayer > (EN_BEN_CREEP_CLOSEST * 1.2f)) &&
+                EnBen_FindSpot(play, player, Math_Vec3f_Yaw(&player->actor.world.pos, &this->actor.world.pos),
+                               CLAMP_MIN(this->actor.xzDistToPlayer * 0.7f, EN_BEN_CREEP_CLOSEST), &pos)) {
+                EnBen_PlaceAt(this, play, &pos); // in plain sight, this once
+                Actor_PlaySfx(&this->actor, EN_BEN_STEP_SFX);
+            }
+            if (this->directorTimer == EN_BEN_DREAM_INVERT) {
+                Ben_SetInputMode(BEN_INPUT_INVERTED);
+            } else if (this->directorTimer == EN_BEN_DREAM_REFUSE) {
+                Ben_SetInputMode(BEN_INPUT_REFUSED);
+                Play_EnableMotionBlur(EN_BEN_BLUR_ALPHA);
+                this->blurFrames = 0x7FFF; // Destroy turns it off
+            } else if ((this->directorTimer >= EN_BEN_DREAM_SPEAK) && (play->msgCtx.msgMode == MSGMODE_NONE)) {
+                Player_SetCsActionWithHaltedActors(play, &this->actor, PLAYER_CSACTION_WAIT);
+                Message_StartTextbox(play, BEN_TEXT_DREAM, NULL);
+                this->directorStep = 2;
+            }
+            break;
+
+        case 2:
+            if (Message_GetState(&play->msgCtx) == TEXT_STATE_CLOSING) {
+                Play_FillScreen(play, true, 0, 0, 0, 255);
+                Audio_PlaySfx(EN_BEN_LAUGH_SFX);
+                this->directorStep = 3;
+                this->directorTimer = 0;
+            }
+            break;
+
+        case 3:
+            if (this->directorTimer >= EN_BEN_FINALE_GIVE_OUT) {
+                // Session 7 (free): you wake up in Clock Town, and it's an hour before the end.
+                this->directorStep = 4;
+                Ben_AdvanceSession(play, BEN_SESSION_FREE);
+                gSaveContext.save.day = 3;
+                gSaveContext.save.time = CLOCK_TIME(23, 0);
+                gSaveContext.save.isNight = true;
+                play->nextEntrance = ENTRANCE(SOUTH_CLOCK_TOWN, 0);
+                play->transitionTrigger = TRANS_TRIGGER_START;
+                play->transitionType = TRANS_TYPE_FADE_BLACK_SLOW;
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
+/**
+ * The end (STORY_BIBLE.md C21). Majora's lair, empty. It comes towards you whatever you do, and when it reaches you
+ * the screen goes black: "The counter resets. I'm glad you did that." Your file is his now.
+ */
+void EnBen_LastGame(EnBen* this, PlayState* play) {
+    static f32 sScales[] = { 1.0f, 0.75f, 0.5f };
+    Player* player = GET_PLAYER(play);
+    Vec3f pos;
+    s32 i;
+
+    this->directorTimer++;
+
+    switch (this->directorStep) {
+        case 0:
+            if ((this->directorTimer < EN_BEN_SALESMAN_START) || (play->csCtx.state != CS_STATE_IDLE) ||
+                (play->msgCtx.msgMode != MSGMODE_NONE)) {
+                break;
+            }
+            for (i = 0; i < ARRAY_COUNT(sScales); i++) {
+                if (EnBen_FindSpot(play, player, player->actor.shape.rot.y, EN_BEN_LAST_DIST * sScales[i], &pos)) {
+                    EnBen_PlaceAt(this, play, &pos);
+                    this->isHidden = false;
+                    this->trailCount = 0;
+                    EnBen_SetStaring(this, true);
+                    this->directorStep = 1;
+                    this->directorTimer = 0;
+                    break;
+                }
+            }
+            break;
+
+        case 1: // it doesn't care whether you're looking
+            if (this->actor.xzDistToPlayer < EN_BEN_LAST_NEAR) {
+                Player_SetCsActionWithHaltedActors(play, &this->actor, PLAYER_CSACTION_WAIT);
+                Play_FillScreen(play, true, 0, 0, 0, 255);
+                Audio_PlaySfx(EN_BEN_LAUGH_SFX);
+                this->directorStep = 2;
+                this->directorTimer = 0;
+            } else if (((this->directorTimer % EN_BEN_LAST_STEP) == 0) &&
+                       EnBen_FindSpot(play, player, Math_Vec3f_Yaw(&player->actor.world.pos, &this->actor.world.pos),
+                                      this->actor.xzDistToPlayer * 0.75f, &pos)) {
+                EnBen_PlaceAt(this, play, &pos);
+                Actor_PlaySfx(&this->actor, EN_BEN_STEP_SFX);
+            }
+            break;
+
+        case 2:
+            if (this->directorTimer >= EN_BEN_FINALE_GIVE_OUT) {
+                Message_StartTextbox(play, BEN_TEXT_COUNTER, NULL);
+                this->directorStep = 3;
+            }
+            break;
+
+        case 3:
+            if (Message_GetState(&play->msgCtx) == TEXT_STATE_CLOSING) {
+                this->directorStep = 4;
+                this->directorTimer = 0;
+            }
+            break;
+
+        case 4:
+            if (this->directorTimer >= EN_BEN_SALESMAN_CUT_FRAMES) {
+                this->directorStep = 5;
+                Sram_BenEndGame(play);
                 Ben_CrashToTitle(play);
             }
             break;
@@ -1325,7 +1825,8 @@ void EnBen_Update(Actor* thisx, PlayState* play) {
         this->actionFunc(this, play);
         return;
     }
-    if (this->actor.params == BEN_ACTOR_SALESMAN) {
+    if ((this->actor.params == BEN_ACTOR_SALESMAN) || (this->actor.params == BEN_ACTOR_WARP) ||
+        (this->actor.params == BEN_ACTOR_MOON)) {
         if (AudioSeq_GetActiveSeqId(SEQ_PLAYER_BGM_MAIN) != NA_BGM_DISABLED) {
             SEQCMD_STOP_SEQUENCE(SEQ_PLAYER_BGM_MAIN, 0);
         }
@@ -1343,12 +1844,20 @@ void EnBen_Update(Actor* thisx, PlayState* play) {
     }
 
     EnBen_UpdateMusic(this, play);
-    EnBen_EmptyTown(play);
+    EnBen_EmptyScene(this, play);
     EnBen_CheckDrowning(this, play);
+    EnBen_CheckSea(this, play);
     EnBen_RememberPath(this, play);
 
     this->actionFunc(this, play);
 
+    EnBen_UpdateWhiteout(this, play);
+    if ((Ben_GetSession() == BEN_SESSION_STONE) && (this->actionFunc == EnBen_Stand)) {
+        // Session 6: every time you look at it, Link's legs go the wrong way.
+        Ben_SetInputMode((this->isNoticed && !this->isHidden) ? BEN_INPUT_INVERTED : BEN_INPUT_NORMAL);
+    } else if ((Ben_GetSession() == BEN_SESSION_STONE) && (this->actionFunc != EnBen_Dream)) {
+        Ben_SetInputMode(BEN_INPUT_NORMAL);
+    }
     EnBen_DrainWorld(this, play);
     if (this->isStaring) {
         Audio_PlaySfx(NA_SE_EN_LAST2_HEARTBEAT_OLD - SFX_FLAG);

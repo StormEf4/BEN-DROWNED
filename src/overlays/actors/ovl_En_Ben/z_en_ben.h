@@ -53,6 +53,9 @@ typedef struct EnBen {
     /* 0x2A0 */ u8 directorStep;   // scripted scenes: which step of the scene we're on
     /* 0x2A2 */ s16 subCamId;      // scripted scenes: the camera they look through
     /* 0x2A4 */ Actor* other;      // scripted scenes: someone else in them (the Salesman)
-} EnBen;                           // size = 0x2A8
+    /* 0x2A8 */ s16 whiteFrames;   // Session 4: frames left of a whiteout
+    /* 0x2AA */ s16 watchFrames;   // Session 7: frames you've watched it without it moving
+    /* 0x2AC */ u8 inWhiteout;     // Session 4: it's coming in this whiteout
+} EnBen;                           // size = 0x2B0
 
 #endif // Z_EN_BEN_H

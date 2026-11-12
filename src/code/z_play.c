@@ -1000,6 +1000,7 @@ void Play_UpdateMain(PlayState* this) {
                     CollisionCheck_OC(this, &this->colChkCtx);
                     CollisionCheck_Damage(this, &this->colChkCtx);
                     CollisionCheck_ClearContext(this, &this->colChkCtx);
+                    Ben_FilterInput(&input[0]); // BEN: losing control of Link
                     if (!this->haltAllActors) {
                         Actor_UpdateAll(this, &this->actorCtx);
                     }

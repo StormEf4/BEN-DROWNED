@@ -51,7 +51,7 @@ in `include/ben/ben.h`.
 | 13 | Fourth sighting: a line of statues along the path you just walked; music gone, all grey, heartbeat, the clock running backwards. Look away: all gone, laugh, the clock back where it was |
 | 14 | From the sixth sighting on, about half the time: look away and it's closer each time, beeping hearts up close, then a smear and the laugh. The music comes back after |
 
-Not in yet: the BEN save on the file select (Session 0).
+The rest of the story, from the BEN file on a blank cartridge to "The counter resets.", is in PLAYTHROUGH.md.
 
 The laugh is the Salesman clip swapped in for the Great Fairy's laugh sample
 (`assets/audio/samples/SampleBank_0/great_fairy_laughter.wav`), so Great Fairies laugh like him too.

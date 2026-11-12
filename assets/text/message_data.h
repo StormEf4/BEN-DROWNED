@@ -49,6 +49,59 @@ HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
 )
 )
 
+// BEN_TEXT_COLD: Session 4's end, at Darmani's grave in the Goron Graveyard
+DEFINE_MESSAGE(0x4D04, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+"Nobody could heal him either." BOX_BREAK
+"So he stays where he fell," "\n"
+"and waits for someone" "\n"
+"to come and play." BOX_BREAK
+DELAY(0x0028) COLOR_RED "Like me." COLOR_DEFAULT
+)
+)
+
+// BEN_TEXT_MOON: Session 5's end, on the Moon (STORY_BIBLE.md C18)
+DEFINE_MESSAGE(0x4D05, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+"Do you want to play with us?" BOX_BREAK
+"No?" BOX_BREAK
+"That's all right." "\n"
+"Your friend is waiting" "\n"
+"at the stone tower."
+)
+)
+
+// BEN_TEXT_DREAM: Session 6's end, the dream of being made into a statue (STORY_BIBLE.md C20)
+DEFINE_MESSAGE(0x4D06, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+"Hold still." BOX_BREAK
+"It's easier if you" "\n"
+"hold still." BOX_BREAK
+DELAY(0x0028) COLOR_RED "There." "\n"
+"Now you look like me." COLOR_DEFAULT
+)
+)
+
+// BEN_TEXT_LETS_PLAY: Session 7, on top of the Clock Tower
+DEFINE_MESSAGE(0x4D07, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+COLOR_RED "Let's play." COLOR_DEFAULT
+)
+)
+
+// BEN_TEXT_COUNTER: the end (STORY_BIBLE.md C21)
+DEFINE_MESSAGE(0x4D08, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+"The counter resets." BOX_BREAK
+DELAY(0x0028) "I'm glad you did that."
+)
+)
+
 /*
  * The following two messages should be kept last and in this order.
  * Message 0xFFFD must be last to not break the message debugger.
