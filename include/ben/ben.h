@@ -60,6 +60,7 @@
 #define BEN_TEXT_SIGIL_1 0x4D24   // the phrase so far, as each sigil is stamped (one message per sigil)
 /* The way in */
 #define BEN_TEXT_OPENING 0x4D30 // Tatl, the first time a new file steps out into South Clock Town
+#define BEN_TEXT_TATL_1 0x4D31  // Tatl says something she shouldn't, out of nowhere (0x4D31-0x4D34)
 
 /* En_Ben params */
 #define BEN_ACTOR_STATUE 0   // the stalker statue
@@ -130,11 +131,12 @@ void Ben_SetFlag(u8 flag, s32 on);
  * yours back to you, backwards. Every time it's played, a sigil task begins, one per session (the "nights"): the child
  * no one sees, don't move, the wet feet. Each stamps a sigil and a word of the phrase. Ported from the Majora's Mask:
  * WTF project's song kit (z_mod_song.c): heard in the message system's free play, beside the game's own songs. */
-#define BEN_SONG_UNHEALING 0x40 // what lastPlayedSong holds when it's played (past every song of the game's)
-#define BEN_SIGILS_BUILT 3      // sigils that have a task so far, of the seven
-s32 Ben_UnhealingKnown(void);   // it can be played (taught, or Session 4 and on)
-s32 Ben_UnhealingTaught(void);  // the statue has played it to you
-void Ben_TeachUnhealing(void);  // marks it known and plays its melody on the ocarina (the game's own playback)
+#define BEN_SONG_UNHEALING 0x40    // what lastPlayedSong holds when it's played (past every song of the game's)
+#define BEN_SIGILS_BUILT 3         // sigils that have a task so far, of the seven
+s32 Ben_UnhealingKnown(void);      // it can be played (taught, or Session 4 and on)
+s32 Ben_UnhealingTaught(void);     // the statue has played it to you
+void Ben_TeachUnhealing(void);     // marks it known and plays its melody on the ocarina (the game's own playback)
+void Ben_PlayUnhealing(u8 volume); // just plays it (somewhere, someone is playing your song backwards)
 s32 Ben_IsMelodyPlaying(void);
 s32 Ben_GetSigils(void);
 s32 Ben_CanStampSigil(void); // another sigil is built, and none has been stamped this session

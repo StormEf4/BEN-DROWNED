@@ -80,7 +80,10 @@ typedef struct EnBen {
     /* 0x2EB */ u8 showStatue;     // the task's own statue, drawn at trail[0]
     /* 0x2EC */ Vec3f feet[EN_BEN_FEET];
     /* 0x3AC */ s16 feetYaw[EN_BEN_FEET];
-    /* 0x3CC */ s16 walkYaw; // where the wet feet are heading
-} EnBen;                     // size = 0x3D0
+    /* 0x3CC */ s16 walkYaw;    // where the wet feet are heading
+    /* 0x3CE */ u8 lastEvent;   // Termina: the last small thing that happened, so the next is something else
+    /* 0x3D0 */ s16 savedSpeed; // Termina: the clock's speed before it stopped
+    /* 0x3D2 */ s16 fog;        // Termina: how far the fog has closed in (0-255)
+} EnBen;                        // size = 0x3D4
 
 #endif // Z_EN_BEN_H

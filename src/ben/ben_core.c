@@ -586,25 +586,29 @@ static void Ben_StopMelody(void) {
     AudioOcarina_SetInstrument(OCARINA_INSTRUMENT_OFF);
 }
 
-void Ben_TeachUnhealing(void) {
+void Ben_PlayUnhealing(u8 volume) {
     s32 i;
 
-    BEN_SAVE->unhealing |= BEN_UNHEALING_KNOWN;
     bzero(sMelody, sizeof(sMelody));
     // A beat each, slow, and the last one held
     for (i = 0; i < BEN_UNHEALING_NOTES; i++) {
         sMelody[1 + i].pitch = sUnhealingPitches[i];
         sMelody[1 + i].length = (i == BEN_UNHEALING_NOTES - 1) ? 90 : 40;
-        sMelody[1 + i].volume = 80;
+        sMelody[1 + i].volume = volume;
     }
     sMelody[1 + BEN_UNHEALING_NOTES].pitch = OCARINA_PITCH_NONE; // the end: no length
-    sMelody[1 + BEN_UNHEALING_NOTES].volume = 80;
+    sMelody[1 + BEN_UNHEALING_NOTES].volume = volume;
     // The ocarina's sound on, and the game's playback set up as for one of its own songs, with this one in its place
     AudioOcarina_SetInstrument(OCARINA_INSTRUMENT_DEFAULT);
     AudioOcarina_SetPlaybackSong(OCARINA_SONG_SONATA + 1, 1);
     sPlaybackSong = &sMelody[1];
     AudioOcarina_GetPlaybackStaff()->state = 1;
     sTeaching = true;
+}
+
+void Ben_TeachUnhealing(void) {
+    BEN_SAVE->unhealing |= BEN_UNHEALING_KNOWN;
+    Ben_PlayUnhealing(80);
 }
 
 s32 Ben_IsMelodyPlaying(void) {

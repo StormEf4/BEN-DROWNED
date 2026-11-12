@@ -329,6 +329,43 @@ DELAY(0x0014) "I always know." "\n"
 )
 )
 
+// BEN_TEXT_TATL_1 to _4: Tatl, out of nowhere, somewhere the story isn't (z_en_ben_termina.inc)
+DEFINE_MESSAGE(0x4D31, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+"Who were you talking to" "\n"
+"just now?" BOX_BREAK
+DELAY(0x0014) "...You were. I heard you."
+)
+)
+
+DEFINE_MESSAGE(0x4D32, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+"Have we been here before?" BOX_BREAK
+"It feels like we've been here" "\n"
+"before. A lot of times."
+)
+)
+
+DEFINE_MESSAGE(0x4D33, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+"Don't look behind us." BOX_BREAK
+DELAY(0x0014) "...Okay. It's gone."
+)
+)
+
+DEFINE_MESSAGE(0x4D34, 0x00, 0x00,
+MSG(
+HEADER(0x0000, 0xFE, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF)
+"Why does everyone keep" "\n"
+"calling you that?" BOX_BREAK
+"That's not your name." BOX_BREAK
+DELAY(0x0014) "...Is it?"
+)
+)
+
 /*
  * The following two messages should be kept last and in this order.
  * Message 0xFFFD must be last to not break the message debugger.

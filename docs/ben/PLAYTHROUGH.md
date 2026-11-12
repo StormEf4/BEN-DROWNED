@@ -40,17 +40,19 @@ hint; for the story's she calls again after four, so it's never far off when you
 ### Termina, a little wrong (Session 3 on)
 
 Everywhere the story isn't (the rest of Termina, inside and out, but never the boss rooms or the Moon), every two to
-four minutes one small thing happens, and then nothing again for a long while. It's a little more often each session.
+four minutes one small thing happens, never the same one twice running, and then nothing again for a long while. It's
+a little more often each session, and more kinds of thing become possible as the story goes on:
 
-- Somebody nearby stops what they're doing and stares at you.
-- A figure a long way off at the edge of the screen. Look straight at it and it's gone.
-- From Session 4: stone footsteps behind you, closer each time, and then they stop.
-- His laugh, a long way behind you.
-- The music sags, slower and lower, for a few seconds.
-- From Session 4: the colour drains out of everything for a few seconds.
+| From | What can happen |
+|---|---|
+| Session 3 | Somebody nearby stares at you. Everybody nearby turns to look at you at once, or all turn their backs on you. A figure far off at the edge of the screen, gone when you look straight at it. His laugh, far behind you. The music sags, slower and lower. The clock stops for 20 seconds. Tatl says something she shouldn't ("Who were you talking to just now?", "Have we been here before?", "Don't look behind us.", "Why does everyone keep calling you that?"). Somewhere, faintly, someone plays the Song of Unhealing: a hint at the secret. |
+| Session 4 | Stone footsteps behind you, closer, then nothing. The colour drains for a few seconds. The music cuts out completely, then comes back. Your heartbeat, with nothing there. The fog closes in and the light goes, then lifts. |
+| Session 5 | Your hearts beep as if you're dying. It's right behind you: turn round and it's gone, laughing (if you don't turn, you never know). A blink of black, it's standing in front of you, another blink and it's gone (only with Screen flashes on). |
+| Session 6 | For two seconds Link's legs go the wrong way, the way they do when you look at it at Stone Tower. |
 
 None of it counts as a sighting, so it never moves the story on, and it stays out of conversations, cutscenes, the
-game's minigames and the Moon Children.
+game's minigames and the Moon Children. Anything it changes (the clock, the music, the colour, the stick) is put back
+when it's over or when you leave.
 
 ### Hide and seek (Sessions 4 to 6)
 
@@ -118,6 +120,9 @@ straight away. Played again the same session: *"...not tonight."* Sigils 4 to 7 
 | 28 | Session 4 on: the footsteps and the colour draining show up among them. Leave the scene mid-way: the music and colour are back to normal in the next one |
 | 29 | Tatl's C-up in Session 4 ends "...And if we don't go to him, it'll bring us."; in Session 6, "Let it find you." |
 | 30 | After reading a hint, keep wandering: about 4 minutes later Tatl calls again with the same hint |
+| 31 | Session 3: over a long stretch somewhere quiet, expect the crowd turning, the clock stopping (the HUD clock freezes), a Tatl line ending in the laugh, the faint backwards song |
+| 32 | Session 5: turn round now and then; sometimes it's right behind you and vanishes with a laugh. With Screen flashes off, the blink never happens |
+| 33 | Session 6: once in a while the stick is backwards for two seconds, then normal again; leaving the scene mid-way, it's normal in the next |
 
 ## Tuning
 
