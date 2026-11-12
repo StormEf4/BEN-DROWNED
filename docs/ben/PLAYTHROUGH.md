@@ -174,7 +174,7 @@ straight away. Played again the same session: *"...not tonight."* Sigils 4 to 7 
 Termina's small scares are `EN_BEN_TERMINA_*` in `z_en_ben_termina.inc` (how often: `_FIRST`, `_EVERY`, `_RANGE`,
 `_SOONER`); where the visitors come and how likely, its `sVisitors` table and `EN_BEN_VISITOR_*`, and how often each
 can come, `BEN_VISITOR_EVERY` in `src/ben/ben_core.c`. What the visitors do is `TALL_*`, `SMILE_*` and `SLEEP_*` in
-`src/overlays/actors/ovl_En_Ben_Visitor/z_en_ben_visitor.c`, and the SCPs' is `STATUE_*`, `SHY_*` and `OLD_*` in
+`src/overlays/actors/ovl_En_Ben_Visitor/z_en_ben_visitor.inc`, and the SCPs' is `STATUE_*`, `SHY_*` and `OLD_*` in
 `src/overlays/actors/ovl_En_Ben_Visitor/z_en_ben_scp.inc`. The rest are all in `src/overlays/actors/ovl_En_Ben/z_en_ben.c`: `EN_BEN_END_SIGHTINGS` (when the ending comes to you),
 `EN_BEN_DREAM_SIGHTINGS`, `EN_BEN_SEA_DEPTH` (if the open sea never takes you, lower it), `EN_BEN_WHITEOUT_*`, and the
 Salesman scene's `EN_BEN_SALESMAN_*`. Where each session puts you is `Ben_WarpToSession` in `src/ben/ben_core.c`.
@@ -187,10 +187,11 @@ The Moon Child, the sigil and the footprints are built in Python with the model 
 project (`tools/ben/modelkit.py`): edit `tools/ben/gen_ben_models.py` and run it, never the generated
 `z_en_ben_models.inc.c`. `tools/ben/preview_model.py` renders one to a PNG without the game, for example
 `python3 tools/ben/preview_model.py src/overlays/actors/ovl_En_Ben/z_en_ben_models.inc.c child.png sMoonChildBodyDL "sMoonChildHeadDL@0,3200,0,0,0,0,1"`.
-The visitors are `tools/ben/gen_ben_visitors.py`, written to
-`src/overlays/actors/ovl_En_Ben_Visitor/z_en_ben_visitor_models.inc.c` the same way. They're an actor of their own
-(`ACTOR_EN_BEN_VISITOR`), so their models are in memory only while one of them is here. The same script writes the
-SCPs' to `ovl_En_Ben_Scp173/z_en_ben_scp173_models.inc.c` (and 096's and 106's), each its own actor
-(`ACTOR_EN_BEN_SCP173` and so on, so only the one that's here is in memory);
-the two share their helpers through `ovl_En_Ben_Visitor/z_en_ben_visitor_kit.inc`. The SCP models are built from the
+The visitors are `tools/ben/gen_ben_visitors.py`, written the same way into each one's own actor folder:
+`ovl_En_Ben_Visitor/z_en_ben_visitor_models.inc.c` (the Tall Man), `ovl_En_Ben_Smile/z_en_ben_smile_models.inc.c` and
+`ovl_En_Ben_Sleep/z_en_ben_sleep_models.inc.c`. Each is its own actor (`ACTOR_EN_BEN_VISITOR`, `ACTOR_EN_BEN_SMILE`,
+`ACTOR_EN_BEN_SLEEP`, sharing `ovl_En_Ben_Visitor/z_en_ben_visitor.inc`), so only the model of the one that's here is
+in memory. The same script writes the SCPs' to `ovl_En_Ben_Scp173/z_en_ben_scp173_models.inc.c` (and 096's and
+106's), each its own actor too (`ACTOR_EN_BEN_SCP173` and so on); all six share their helpers through
+`ovl_En_Ben_Visitor/z_en_ben_visitor_kit.inc`. The SCP models are built from the
 articles' descriptions only; no image from the wiki was used.

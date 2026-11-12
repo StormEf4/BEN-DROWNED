@@ -1,19 +1,27 @@
 #!/usr/bin/env python3
 """
-Generates the Expanded Horror visitors' models as N64 display lists (F3DEX2), written to
-src/overlays/actors/ovl_En_Ben_Visitor/z_en_ben_visitor_models.inc.c (the visitors' own actor, En_Ben_Visitor, includes it). Built on
-the model kit copied from the Majora's Mask: WTF project (tools/ben/modelkit.py).
+Generates the Expanded Horror visitors' models as N64 display lists (F3DEX2), each written to its own actor's folder
+(src/overlays/actors/ovl_En_Ben_Visitor/z_en_ben_visitor_models.inc.c for the Tall Man, ovl_En_Ben_Smile/
+z_en_ben_smile_models.inc.c, ovl_En_Ben_Sleep/z_en_ben_sleep_models.inc.c), so only the one that's here is in memory.
+Built on the model kit copied from the Majora's Mask: WTF project (tools/ben/modelkit.py).
 
-Usage: tools/ben/gen_ben_visitors.py [visitors output file] [SCP-173, SCP-096 and SCP-106 output files]
+Usage: tools/ben/gen_ben_visitors.py [Tall Man, Smiling Man and "Go to sleep" output files
+                                      [SCP-173, SCP-096 and SCP-106 output files]]
 
 - The Tall Man: twice Link's height, a black suit, a white shirt and a black tie, arms that hang past his knees with
   long pale fingers, and a pale head with no face at all. His tendrils are a display list of their own, drawn only
   when he's close to having you.
-- The Smiling Man: thin, in a dark suit, arms out and one knee up as if he's dancing. Two heads on the same neck: the
-  grin, far too wide and full of teeth, and the frown he wears when he gives up on you.
-- The one who says "Go to sleep": a white hoodie and black jeans, a kitchen knife. His face is drawn unlit and
-  unfogged (a display list of its own, vertex coloured), so when the lights go out it's the only thing you can see:
-  bone white, black rings around eyes that never close, a red cut grin up to the cheeks. Black hair, lit.
+- The Smiling Man: far too thin and long in every limb, in a dark suit with a red tie, one knee up and his arms flung
+  out as if he's dancing, the hands hanging limp from the wrists on fingers like a spider's legs. A gaunt head, the
+  hair slicked flat, a long sharp nose and bloodshot eyes bulging out of sunken sockets with no lids to speak of. His
+  mouth is a display list of its own: the grin (ear to ear, gums and two rows of small pointed teeth) or the frown he
+  wears when he gives up on you (the corners dragged down to his chin, the same staring eyes).
+- The one who says "Go to sleep": thin and hunched in a white hoodie soaked and sprayed with blood, black jeans, a
+  kitchen knife point down in his fist, blood on the blade. His face is drawn unlit and unfogged (a display list of
+  its own, vertex coloured, the shading painted on), so when the lights go out it's the only thing you can see:
+  bleached leathery skin burned in patches, no eyelids (the rims charred black and raw red), bloodshot eyes staring,
+  blood run down from them, a grin carved up into his cheeks with his teeth showing through it. His hair is lit,
+  matted, hanging over his face. His head is cocked.
 
 And the SCP Foundation's, each written to its own actor's folder (src/overlays/actors/ovl_En_Ben_Scp173/
 z_en_ben_scp173_models.inc.c, and 096's and 106's the same way), each built from its SCP wiki article's words
@@ -43,24 +51,16 @@ from modelkit import (  # noqa: E402
     smooth_sphere, smooth_spike,
 )
 
-OUT = Path(__file__).resolve().parents[2] / "src/overlays/actors/ovl_En_Ben_Visitor/z_en_ben_visitor_models.inc.c"
-SCP_OUTS = [Path(__file__).resolve().parents[2] / f"src/overlays/actors/ovl_En_Ben_Scp{n}/z_en_ben_scp{n}_models.inc.c"
-            for n in ("173", "096", "106")]
+ACTORS = Path(__file__).resolve().parents[2] / "src/overlays/actors"
+OUTS = [ACTORS / "ovl_En_Ben_Visitor/z_en_ben_visitor_models.inc.c", ACTORS / "ovl_En_Ben_Smile/z_en_ben_smile_models.inc.c",
+        ACTORS / "ovl_En_Ben_Sleep/z_en_ben_sleep_models.inc.c"]
+SCP_OUTS = [ACTORS / f"ovl_En_Ben_Scp{n}/z_en_ben_scp{n}_models.inc.c" for n in ("173", "096", "106")]
 
 BLACK = (10, 10, 12)
 SUIT = (26, 26, 30)
 SHIRT = (228, 228, 224)
 PALE = (232, 230, 228)
-SMILE_SUIT = (44, 34, 48)
-SMILE_SKIN = (236, 226, 210)
 HAIR = (14, 12, 12)
-HOODIE = (222, 222, 218)
-JEANS = (24, 26, 34)
-BLADE = (176, 178, 186)
-HANDLE = (60, 40, 28)
-MOUTH = (16, 4, 6)
-TEETH = (238, 232, 206)
-EYE_WHITE = (240, 238, 230)
 
 
 TALL_HEIGHT = 8900
@@ -215,173 +215,619 @@ def tall_tendrils():
 
 
 # ---------------------------------------------------------------------------------------------------------------------
-# The Smiling Man
+# Pieces the Smiling Man and "Go to sleep" share
 
 
-def smile_body():
-    parts = []
-    # One leg planted, the other knee up: a dancer mid-step
-    parts.append(S(bent_limb([(-200, 80, 0), (-220, 1500, 40), (-200, 2900, 0), (-170, 3300, 0)],
-                             [110, 110, 140, 160]), SMILE_SUIT))
-    parts.append(S(bent_limb([(260, 900, 650), (240, 1700, 520), (220, 2500, 120), (180, 3300, 0)],
-                             [110, 115, 140, 160]), SMILE_SUIT))
-    parts.append(S(bent_limb([(260, 900, 650), (260, 200, 560)], [105, 100]), SMILE_SUIT))
-    parts.append(S(smooth_sphere(-200, 60, 100, 110, 70, 260, n=8, stacks=5), BLACK))
-    parts.append(S(smooth_sphere(260, 150, 680, 110, 70, 250, n=8, stacks=5), BLACK))
-    torso = RingSurface([
-        (3200, 360, 210, 0, 2.2),
-        (3700, 330, 200, 0, 2.2),
-        (4500, 420, 230, 0, 2.3),
-        (5150, 560, 250, 0, 2.6),
-        (5350, 420, 230, 0, 2.2),
-        (5520, 120, 120, 0, 2.0),
-    ], 14)
-    parts.append(S(torso.build(cap_start=True, cap_end=True), SMILE_SUIT))
-    collar = [on_face(torso, [(-120, 5000), (0, 4700), (0, 5000), (-80, 5250)], 8),
-              on_face(torso, [(0, 4700), (120, 5000), (80, 5250), (0, 5000)], 8)]
-    parts.append(F(collar, SHIRT))
-    # Arms out wide, elbows up, long hands hanging loose
-    for side in (-1, 1):
-        parts.append(S(bent_limb([(side * 520, 5150, 0), (side * 1300, 5000, 120), (side * 1700, 5800, 250)],
-                                 [110, 100, 90]), SMILE_SUIT))
-        parts.append(S(bent_limb([(side * 1700, 5800, 250), (side * 1780, 6350, 300)], [70, 40]), SMILE_SKIN))
-    parts.append(S(limb([(0, 5450, 0), (0, SMILE_NECK_Y + 80, 10)], [110, 100], cap_end=False), SMILE_SKIN))
+def patch(surface, x0, x1, y0, y1, lift, nx=4, ny=4):
+    """A rectangle laid on the front of `surface` as a grid, so it follows the curve both ways."""
+    faces = []
+    for i in range(nx):
+        a, b = x0 + (x1 - x0) * i / nx, x0 + (x1 - x0) * (i + 1) / nx
+        for j in range(ny):
+            c, d = y0 + (y1 - y0) * j / ny, y0 + (y1 - y0) * (j + 1) / ny
+            faces.append(on_face(surface, [(a, c), (b, c), (b, d), (a, d)], lift))
+    return faces
+
+
+def smooth_patch(surface, x0, x1, y0, y1, lift, nx=4, ny=4):
+    """A patch like `patch`, but one smooth piece: its points shared, so it's shaded as the surface under it is."""
+    m = Smooth()
+    idx = [[m.add((x0 + (x1 - x0) * i / nx, y0 + (y1 - y0) * j / ny,
+                   surface.front_z(x0 + (x1 - x0) * i / nx, y0 + (y1 - y0) * j / ny, lift)))
+            for j in range(ny + 1)] for i in range(nx + 1)]
+    for i in range(nx):
+        for j in range(ny):
+            m.quad(idx[i][j], idx[i + 1][j], idx[i + 1][j + 1], idx[i][j + 1])
+    if m.normals()[idx[0][0]][2] < 0:
+        m.tris = [(a, c, b) for a, b, c in m.tris]
+    return m
+
+
+def vee(surface, y0, y1, w1, lift, bands=6):
+    """A V down the front of `surface`: nothing at y0, w1 either side of the middle at y1."""
+    faces = []
+    for i in range(bands):
+        ya, yb = y0 + (y1 - y0) * i / bands, y0 + (y1 - y0) * (i + 1) / bands
+        wa, wb = w1 * i / bands, w1 * (i + 1) / bands
+        for s in (-1, 1):
+            faces.append(on_face(surface, [(0, ya), (s * wa, ya), (s * wb, yb), (0, yb)], lift))
+    return faces
+
+
+def ball(r, n=10, k=6):
+    """A sphere as a RingSurface about (0, 0, 0), so things can be laid on its front (an eye's pupil)."""
+    rows = []
+    for i in range(k + 1):
+        t = -math.pi / 2 + math.pi * i / k
+        s = max(math.cos(t), 0.05)
+        rows.append((r * math.sin(t), r * s, r * s, 0.0, 2.0))
+    return RingSurface(rows, n)
+
+
+def eye(r, pupil, iris, iris_colour, white, vein, seed, look=(0.0, 0.0), n=8, k=5):
+    """A bulging eyeball at the origin, looking out along +Z: no lids, red veins running in from its edge to a small
+    iris and a pinprick of a pupil (`look` moves them off centre)."""
+    b = ball(r, n, k)
+    parts = [S(b.build(cap_start=True, cap_end=True), white)]
+    veins = []
+    for v in range(4):
+        a = math.tau * (v + 0.3 * noise(v * 31.0, seed, 0.0, seed)) / 4
+        pts = []
+        for j in range(3):
+            f = 0.92 - 0.22 * j
+            w = 0.18 * noise(j * 41.0, v * 13.0, seed, seed)
+            pts.append((r * f * math.cos(a + w), r * f * math.sin(a + w)))
+        veins += stroke(b, pts, r * 0.07, 1.0, taper=True, seg=r * 0.4)
+    parts.append(F(veins, vein))
+    if iris:
+        parts.append(F(disc_on(b, look[0], look[1], iris, iris, 1.5, n=8, rings=1), iris_colour))
+    parts.append(F(disc_on(b, look[0], look[1], pupil, pupil, 2.5, n=6, rings=1), BLACK))
     return parts
 
 
-def smile_head(grin):
-    """The head with its pivot at the neck: the grin (or, `grin` false, the frown)."""
-    head = head_surface(450, 270, 400, 300, cz=20)
-    parts = [S(head.build(cap_start=True, cap_end=True), SMILE_SKIN)]
-    hair = smooth_sphere(0, 610, -30, 290, 300, 300, n=12, stacks=6)
-    parts.append(S(hair, HAIR))
-    # Wide eyes: whites and small black pupils
-    eyes, pupils = [], []
+def surface_quads(surface):
+    """Every quad of a RingSurface, facing out: for a vertex coloured display list."""
+    quads = []
+    for k in range(len(surface.rings) - 1):
+        r0 = surface.ring_points(surface.rings[k])
+        r1 = surface.ring_points(surface.rings[k + 1])
+        for i in range(len(r0)):
+            j = (i + 1) % len(r0)
+            quads.append(facing_out([r0[i], r0[j], r1[j], r1[i]], surface))
+    return quads
+
+
+def moved_faces(faces, fn):
+    return [[tuple(fn(p)) for p in f] for f in faces]
+
+
+def spider_hand(side, wrist, down, curl, skin, nail, palm=300, lengths=(430, 500, 470, 380), width=30, spread=0.0):
+    """A long hand hanging from `wrist` the way `down` points, fingers knuckled and too long, bending towards `curl`
+    and fanning out by `spread`."""
+    parts = []
+    palm_end = tuple(wrist[i] + down[i] * palm for i in range(3))
+    parts.append(S(bent_limb([wrist, tuple(wrist[i] + down[i] * palm * 0.5 for i in range(3)), palm_end],
+                             [width * 1.6, width * 2.2, width * 1.8], n=6), skin))
+    across = norm((-down[1], down[0], 0.0)) if abs(down[2]) < 0.7 else (1.0, 0.0, 0.0)
+    for k in range(4):
+        off = (k - 1.5) * width * 1.1
+        fan = (k - 1.5) * spread
+        base = tuple(palm_end[i] + across[i] * off for i in range(3))
+        length = lengths[k]
+        j1 = tuple(base[i] + down[i] * length * 0.42 + across[i] * fan * 0.4 + curl[i] * length * 0.06
+                   for i in range(3))
+        j2 = tuple(j1[i] + down[i] * length * 0.33 + across[i] * fan * 0.35 + curl[i] * length * 0.14
+                   for i in range(3))
+        tip = tuple(j2[i] + down[i] * length * 0.25 + across[i] * fan * 0.25 + curl[i] * length * 0.2
+                    for i in range(3))
+        parts.append(S(finger([base, j1, j2, tip], [width * 0.8, width * 0.7, width * 0.6, width * 0.4],
+                              knuckle=True), skin))
+        parts.append(S(smooth_spike(tuple(j2[i] + (tip[i] - j2[i]) * 0.55 for i in range(3)),
+                                    tuple(tip[i] + down[i] * width * 1.3 + curl[i] * width for i in range(3)),
+                                    width * 0.42, sides=4), nail))
+    thumb_base = tuple(wrist[i] + down[i] * palm * 0.4 - across[i] * width * 2.2 for i in range(3))
+    thumb_tip = tuple(thumb_base[i] + down[i] * lengths[0] * 0.6 - across[i] * width * 1.5 + curl[i] * width * 2
+                      for i in range(3))
+    parts.append(S(finger([thumb_base, tuple((thumb_base[i] + thumb_tip[i]) / 2 for i in range(3)), thumb_tip],
+                          [width * 0.85, width * 0.7, width * 0.45], knuckle=True), skin))
+    return parts
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# The Smiling Man
+
+SMILE_SUIT = (40, 30, 44)
+SMILE_LAPEL = (22, 16, 26)
+SMILE_SHIRT = (196, 190, 176)  # gone grey
+SMILE_TIE = (100, 12, 22)
+SMILE_SKIN = (228, 214, 194)
+SMILE_CREASE = (146, 118, 108)
+SMILE_SOCKET = (104, 76, 80)
+SMILE_LIP = (150, 66, 72)
+SMILE_GUM = (172, 54, 68)
+SMILE_MOUTH = (18, 4, 6)
+SMILE_TEETH = (232, 222, 186)
+SMILE_NAIL = (170, 150, 128)
+EYE_WHITE = (240, 236, 226)
+EYE_VEIN = (180, 30, 34)
+
+
+def smile_body():
+    """Too thin and too long in every limb, in a dark suit that fits him like a glove: mid-step in his dance, one knee
+    up to his chest, arms flung out and up with the hands hanging limp from the wrists."""
+    parts = []
+    # The planted leg, a little bent, and the one kicked up, the knee up at his waist
+    planted = [(-200, 3250, 0), (-212, 2450, 30), (-215, 1720, 90), (-205, 960, 30), (-190, 210, -10)]
+    raised = [(230, 3250, 0), (240, 3080, 450), (250, 2880, 880), (255, 2280, 830), (262, 1700, 720)]
+    for pts in (planted, raised):
+        parts.append(S(bent_limb(pts, [150, 112, 92, 80, 66], n=8), SMILE_SUIT))
+        parts.append(S(smooth_sphere(*pts[2], 98, 98, 98, n=6, stacks=4), SMILE_SUIT))  # a knee that pokes out
+    # Long shoes, pointed, polished
+    for shoe in ([(-190, 120, -150), (-192, 100, 160), (-188, 60, 560)],
+                 [(262, 1660, 570), (264, 1560, 860), (268, 1380, 1180)]):
+        parts.append(S(bent_limb(shoe, [84, 80, 22], n=6), BLACK))
+
+    torso = RingSurface(resampled([
+        (3150, 300, 190, 0, 2.2),
+        (3600, 245, 160, 10, 2.2),  # the waist, pinched
+        (4300, 330, 200, 20, 2.3),
+        (4900, 430, 220, 20, 2.5),
+        (5180, 520, 228, 10, 2.8),  # shoulders, square
+        (5340, 330, 190, 0, 2.2),
+        (5480, 110, 110, 0, 2.0),
+    ], 320), 12, bump=bumpy(5, 4.0, 1.5))
+    parts.append(S(torso.build(cap_start=True, cap_end=True), SMILE_SUIT))
     for side in (-1, 1):
-        eyes.append(oval_on(head, side * 105, 560, 70 if grin else 66, 52 if grin else 22, 6))
-        pupils.append(oval_on(head, side * 105, 560, 18, 18, 10, n=8))
-    parts.append(F(eyes, EYE_WHITE))
-    parts.append(F(pupils, BLACK))
+        parts.append(S(smooth_sphere(side * 120, 3000, -150, 150, 420, 60, n=6, stacks=4), SMILE_SUIT))  # tails
+        parts.append(S(smooth_sphere(side * 470, 5170, 0, 130, 90, 150, n=8, stacks=4), SMILE_SUIT))  # padding
+
+    # The shirt in a V, the lapels either side, a thin red tie, the jacket's buttons and where it pulls
+    parts.append(F(vee(torso, 4250, 5300, 175, 6, bands=7), SMILE_SHIRT))
+    lapels = []
+    for side in (-1, 1):
+        lapels += stroke(torso, [(side * (175 * (y - 4250) / 1050 + 45), y) for y in (4250, 4600, 4950, 5300)], 90, 9)
+    parts.append(F(lapels, SMILE_LAPEL))
+    tie = stroke(torso, [(0, 4300), (0, 5150)], 56, 12, seg=150) + disc_on(torso, 0, 5200, 40, 42, 14, n=8, rings=1)
+    parts.append(F(tie, SMILE_TIE))
+    buttons = disc_on(torso, 0, 4100, 20, 20, 8, n=6, rings=1) + disc_on(torso, 0, 3820, 20, 20, 8, n=6, rings=1)
+    folds = []
+    for side in (-1, 1):
+        folds += stroke(torso, [(side * 40, 3950), (side * 180, 3700), (side * 250, 3500)], 16, 5, taper=True)
+        folds += stroke(torso, [(side * 60, 4400), (side * 240, 4150)], 14, 5, taper=True)
+    parts.append(F(buttons + folds, SMILE_LAPEL))
+
+    # Arms flung out and up, the elbows sharp, the hands hanging from the wrists on fingers like a spider's legs
+    for side in (-1, 1):
+        shoulder = (side * 520, 5150, 0)
+        elbow = (side * 1250, 5350, 160)
+        wrist = (side * 1560, 6250, 320)
+        parts.append(S(bent_limb([shoulder, tuple((shoulder[i] + elbow[i]) / 2 for i in range(3)), elbow,
+                                  tuple((elbow[i] + wrist[i]) / 2 for i in range(3)), wrist], [100, 80, 74, 62, 54],
+                                 n=7), SMILE_SUIT))
+        parts.append(S(smooth_sphere(*elbow, 80, 80, 80, n=6, stacks=4), SMILE_SUIT))
+        cuff = tuple(wrist[i] + (wrist[i] - elbow[i]) * 0.06 for i in range(3))
+        parts.append(S(bent_limb([wrist, cuff], [60, 58], n=6), SMILE_SHIRT))
+        parts += spider_hand(side, cuff, norm((side * 0.25, -1.0, 0.2)), norm((side * -0.5, 0.0, 0.6)), SMILE_SKIN,
+                             SMILE_NAIL, palm=260, lengths=(420, 500, 470, 370), width=26, spread=60)
+    # A long neck, its Adam's apple and its cords standing out, in a starched collar
+    parts.append(S(limb([(0, 5380, 0), (0, SMILE_NECK_Y + 120, 25)], [84, 70], cap_end=False), SMILE_SKIN))
+    parts.append(S(smooth_sphere(0, 5560, 70, 30, 40, 30, n=6, stacks=4), SMILE_SKIN))
+    for side in (-1, 1):
+        parts.append(S(bent_limb([(side * 45, 5420, 40), (side * 30, 5620, 50)], [16, 12], n=4), SMILE_SKIN))
+    parts.append(S(limb([(0, 5360, 0), (0, 5470, 5)], [108, 98], cap_start=True), SMILE_SHIRT))
+    return parts
+
+
+def smile_head_surface():
+    return RingSurface(resampled([
+        (40, 40, 40, 70, 2.0),  # a pointed chin
+        (110, 115, 120, 75, 2.0),
+        (220, 185, 200, 60, 2.0),
+        (360, 228, 245, 40, 2.0),
+        (480, 252, 262, 30, 2.0),
+        (600, 252, 270, 20, 2.0),
+        (720, 246, 268, 10, 2.0),
+        (850, 218, 240, 0, 2.0),
+        (960, 150, 170, -10, 2.0),
+        (1030, 30, 40, -20, 2.0),
+    ], 90), 12, bump=bumpy(4, 7.0, 2.0))
+
+
+def smile_head():
+    """His head, its pivot at his neck: long and gaunt, the hair slicked flat with a widow's peak, cheekbones like
+    knuckles, a long sharp nose and eyes that bulge out of his skull with no lids to speak of. What his mouth does is
+    smile_mouth's."""
+    head = smile_head_surface()
+    parts = [S(limb([(0, -80, -20), (0, 260, -30)], [82, 90], cap_start=True, cap_end=False), SMILE_SKIN),
+             S(head.build(cap_start=True, cap_end=True), SMILE_SKIN)]
+    parts.append(S(smooth_sphere(0, 730, -50, 246, 320, 290, n=12, stacks=6), HAIR))
+    parts.append(F([on_face(head, [(-110, 900), (0, 780), (110, 900), (0, 940)], 4)], HAIR))  # a widow's peak
+    for side in (-1, 1):
+        parts.append(S(smooth_sphere(side * 258, 600, 10, 30, 82, 55, n=6, stacks=4), SMILE_SKIN))  # ears
+    # Sunken sockets with the eyes standing out of them, dark under them, the cheeks hollow under the bone
+    shadow = []
+    for side in (-1, 1):
+        shadow += ring_on(head, side * 105, 615, 58, 92, 3, n=10)
+        shadow += stroke(head, [(side * 60, 530), (side * 110, 505), (side * 170, 530)], 22, 4)
+    parts.append(F(shadow, SMILE_SOCKET))
+    hollows = []
+    for side in (-1, 1):
+        hollows += stroke(head, [(side * 185, 450), (side * 180, 360), (side * 160, 270)], 40, 2, taper=True)
+    parts.append(F(hollows, SMILE_CREASE))
+    for side, look in ((-1, (-5.0, 2.0)), (1, (9.0, -3.0))):  # not quite looking the same way
+        z = head.front_z(side * 105, 615) - 22
+        parts += move(eye(68, 8, 17, (136, 130, 92), EYE_WHITE, EYE_VEIN, side + 2.0, look),
+                      shift(side * 105, 615, z))
+    # The nose: long, thin, sharp
+    parts.append(S(smooth_spike((0, 600, head.front_z(0, 600) - 25), (0, 445, head.front_z(0, 445) + 115), 36,
+                                sides=5, bend=(0, -10, 20)), SMILE_SKIN))
+    parts.append(F(disc_on(head, -26, 452, 13, 8, 4, n=6, rings=1) + disc_on(head, 26, 452, 13, 8, 4, n=6, rings=1),
+                   SMILE_MOUTH))
+    return parts
+
+
+def smile_mouth(grin):
+    """His mouth and his brows, laid on his head: the grin (ear to ear, the corners up into his cheeks, the gums
+    showing over two rows of small pointed teeth, brows high in delight), or with `grin` false the frown he gives you
+    when you get away (the corners dragged down to his chin, the brows knotted, the same staring eyes)."""
+    head = smile_head_surface()
+    parts = []
     if grin:
-        w = 245
+        w = 240
+
+        def gap(x):
+            return 125 * max(0.0, 1 - (min(abs(x), w) / w) ** 2)
 
         def top(x):
-            return 330 + 150 * (x / w) ** 2
+            return 335 + 150 * (min(abs(x), w) / w) ** 2
 
         def bottom(x):
-            return 330 - 150 * (1 - (x / w) ** 2) + 150 * (x / w) ** 2
+            return top(x) - 6 - gap(x)
 
-        parts.append(F(band(head, -w, w, top, bottom, 6, steps=14), MOUTH))
-        # A row of teeth along the top and one along the bottom, with gaps between
-        teeth = []
-        n = 12
-        for i in range(n):
-            a = -w * 0.86 + 2 * w * 0.86 * i / n + 6
-            b = -w * 0.86 + 2 * w * 0.86 * (i + 1) / n - 6
-            ta, tb = top(a) - 4, top(b) - 4
-            teeth.append(on_face(head, [(a, ta - 55), (b, tb - 55), (b, tb), (a, ta)], 10))
-            ba, bb = bottom(a) + 4, bottom(b) + 4
-            if bottom((a + b) / 2) < 300:
-                teeth.append(on_face(head, [(a, ba), (b, bb), (b, bb + 45), (a, ba + 45)], 10))
-        parts.append(F(teeth, TEETH))
+        parts.append(F(band(head, -w - 10, w + 10, lambda x: top(x) + 10, lambda x: bottom(x) - 10, 3, steps=16),
+                       SMILE_LIP))
+        parts.append(F(band(head, -w, w, top, bottom, 5, steps=16), SMILE_MOUTH))
+        g = 0.88 * w
+        parts.append(F(band(head, -g, g, lambda x: top(x) - 2, lambda x: top(x) - 2 - 0.3 * gap(x), 7, steps=14)
+                       + band(head, -g, g, lambda x: bottom(x) + 2 + 0.22 * gap(x), lambda x: bottom(x) + 2, 7,
+                              steps=14), SMILE_GUM))
+        teeth = Smooth()
+        for row, count in ((1, 17), (-1, 15)):
+            for k in range(count):
+                x = -0.84 * w + 1.68 * w * k / (count - 1)
+                y = top(x) - 0.28 * gap(x) if row > 0 else bottom(x) + 0.2 * gap(x)
+                z = head.front_z(x, y, 4)
+                length = (0.36 + 0.1 * abs(math.sin(k * 2.7 + row))) * gap(x) + 8
+                teeth.extend(smooth_spike((x, y, z - 10), (x * 1.01, y - row * length, z + 6), 14, sides=3))
+        parts.append(S(teeth, SMILE_TEETH))
+        creases = []
+        for s in (-1, 1):
+            creases += stroke(head, [(s * 50, 500), (s * 140, 476), (s * 205, 505)], 16, 4)
+            creases += stroke(head, [(s * (w - 12), top(w) + 10), (s * (w - 4), top(w) + 62)], 12, 4, taper=True)
+            creases += stroke(head, [(s * 60, 236), (s * 140, 205), (s * 210, 250)], 12, 4, taper=True)
+        for y in (830, 875):
+            creases += stroke(head, [(-150, y), (-60, y + 14), (60, y + 6), (150, y + 18)], 9, 3, seg=60)
+        parts.append(F(creases, SMILE_CREASE))
+        brows = []
+        for s in (-1, 1):
+            brows += stroke(head, [(s * 40, 735), (s * 95, 790), (s * 160, 800), (s * 220, 760)], 22, 5, taper=True)
+        parts.append(F(brows, HAIR))
     else:
-        w = 140
+        w = 170
 
         def top(x):
-            return 300 + 50 * (1 - (x / w) ** 2)
+            return 320 - 115 * (min(abs(x), w) / w) ** 2
 
         def bottom(x):
-            return top(x) - 26
+            return top(x) - 16
 
-        parts.append(F(band(head, -w, w, top, bottom, 6, steps=8), MOUTH))
+        parts.append(F(band(head, -w - 10, w + 10, lambda x: top(x) + 12, lambda x: bottom(x) - 12, 3, steps=12),
+                       SMILE_LIP))
+        parts.append(F(band(head, -w, w, top, bottom, 5, steps=12), SMILE_MOUTH))
+        creases = []
+        for s in (-1, 1):
+            creases += stroke(head, [(s * 55, 490), (s * 140, 420), (s * (w + 14), 230)], 16, 4)
+            creases += stroke(head, [(s * w, 195), (s * w * 0.88, 125), (s * w * 0.66, 70)], 16, 4, taper=True)
+            creases += stroke(head, [(s * 16, 700), (s * 10, 790)], 9, 4)
+        creases += stroke(head, [(-40, 120), (0, 100), (40, 120)], 12, 4)  # the chin puckered
+        parts.append(F(creases, SMILE_CREASE))
+        brows = []
+        for s in (-1, 1):
+            brows += stroke(head, [(s * 40, 690), (s * 110, 735), (s * 215, 765)], 26, 5, taper=True)
+        parts.append(F(brows, HAIR))
     return parts
 
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Go to sleep
 
+HOODIE = (214, 212, 206)
+HOODIE_SHADE = (166, 162, 156)  # its folds, its pocket, its hem
+BLOOD = (118, 6, 12)
+BLOOD_DRY = (64, 8, 8)
+JEANS = (24, 26, 34)
+JEANS_WORN = (46, 52, 68)
+SOLE = (196, 194, 186)
+JEFF_SKIN = (232, 228, 222)  # his hands are as white as his face
+KNUCKLE = (178, 112, 106)
+BLADE = (176, 178, 186)
+HANDLE = (30, 24, 22)
+SLEEP_HEAD_TURN = (7.0, 9.0, 70.0)  # his head cocked this far to the side, forward, and pushed this far out
+
+
+def blood_on(surface, spots, seed):
+    """Splashes of blood on the front of `surface`: (x, y, size) each a ragged blot, the bigger ones running."""
+    wet, dry = [], []
+    for k, (x, y, size) in enumerate(spots):
+        if size > 45:  # the big ones have dried dark round their edges, and run
+            dry += disc_on(surface, x, y, size * 1.25, size * 1.1, 3, n=8, rings=1, wobble=0.5, seed=seed + k)
+            wet += stroke(surface, drip(x, y, size * 4, size * 0.2, seed + k), size * 0.35, 5, taper=True, seg=160)
+        wet += disc_on(surface, x, y, size, size * 0.85, 5, n=7 if size > 30 else 5, rings=1, wobble=0.45,
+                       seed=seed + k + 0.5)
+    return [F(dry, BLOOD_DRY), F(wet, BLOOD)]
+
+
+def spray_on(surface, x0, y0, x1, y1, count, size, seed):
+    """A spatter flung across `surface` from (x0, y0) to (x1, y1), drops getting smaller."""
+    out = []
+    for k in range(count):
+        t = k / max(1, count - 1)
+        x = x0 + (x1 - x0) * t + 40 * noise(k * 17.0, seed, 0.0, seed)
+        y = y0 + (y1 - y0) * t + 40 * noise(seed, k * 23.0, 0.0, seed)
+        out.append((x, y, size * (1 - 0.6 * t) * (0.7 + 0.3 * abs(noise(k * 7.0, 0.0, seed, seed)))))
+    return out
+
+
+def sleep_leg(side):
+    """A leg in black jeans, worn pale at the knee, built about x = 0 and moved out to its side."""
+    leg = RingSurface(resampled([
+        (180, 105, 105, 0, 2.0),
+        (700, 115, 112, 10, 2.0),
+        (1250, 120, 118, 30, 2.0),
+        (1350, 126, 128, 40, 2.0),  # the knee
+        (1900, 140, 135, 15, 2.0),
+        (2400, 160, 150, 0, 2.0),
+        (2650, 178, 160, 0, 2.0),
+    ], 340), 8, bump=bumpy(8, 3.0 + side, 2.0))
+    parts = [S(leg.build(cap_start=True), JEANS)]
+    parts.append(F(disc_on(leg, 0, 1330, 70, 95, 4, n=8, rings=1, wobble=0.3, seed=side + 5.0), JEANS_WORN))
+    if side < 0:
+        parts += blood_on(leg, [(30, 1900, 40), (-40, 1600, 22), (10, 1200, 16)], 31.0)
+    # Black sneakers, their soles white
+    parts.append(S(bent_limb([(0, 100, -110), (0, 105, 90), (0, 90, 270)], [100, 98, 78], n=8), BLACK))
+    parts.append(S(smooth_sphere(0, 35, 70, 118, 36, 250, n=8, stacks=4), SOLE))
+    return move(parts, shift(side * 180, 0, 0))
+
+
+def sleep_arm(side):
+    """A sleeve hanging straight, built about x = 0 and moved out: rows from the cuff up to the shoulder."""
+    arm = RingSurface(resampled([
+        (2280, 100, 100, 95, 2.0),
+        (2300, 118, 118, 92, 2.0),  # the cuff
+        (2420, 118, 118, 88, 2.0),
+        (2440, 128, 128, 86, 2.0),
+        (2900, 132, 132, 60, 2.0),
+        (3400, 138, 138, 30, 2.0),
+        (3800, 148, 148, 10, 2.0),
+        (4050, 150, 150, 0, 2.0),
+    ], 320), 8, bump=bumpy(12, 6.0 + side, 1.4))
+    parts = [S(arm.build(cap_start=True, cap_end=True), HOODIE)]
+    parts.append(F(patch(arm, -110, 110, 2300, 2420, 4, nx=4, ny=1), HOODIE_SHADE))
+    if side < 0:  # the knife arm, soaked to the elbow
+        parts += blood_on(arm, [(0, 2370, 70), (-30, 2650, 48), (40, 2900, 30), (-20, 3200, 18)], 51.0)
+    else:
+        parts += blood_on(arm, spray_on(arm, -40, 3300, 60, 2700, 4, 22, 61.0), 61.0)
+    return move(parts, shift(side * 520, 0, 0))
+
 
 def sleep_body():
-    parts = []
-    for side in (-1, 1):
-        x = side * 180
-        parts.append(S(limb([(x, 120, 0), (x, 1300, 10), (x * 1.05, 2400, 0), (x * 0.95, 2650, 0)],
-                            [120, 120, 150, 175], cap_start=True), JEANS))
-        parts.append(S(smooth_sphere(x, 70, 90, 125, 75, 240, n=8, stacks=5), BLACK))
-    torso = RingSurface([
-        (2500, 430, 260, 0, 2.2),
-        (2800, 470, 280, 0, 2.2),  # the hoodie's baggy hem
-        (3600, 470, 270, 0, 2.3),
-        (4000, 560, 290, 0, 2.6),
-        (4200, 420, 260, 0, 2.2),
-        (4320, 140, 140, 0, 2.0),
-    ], 14)
+    """Thin, a little hunched, in a white hoodie that isn't white any more: blood up his right sleeve and sprayed over
+    his chest, its pocket and drawstrings, the hood bunched at his neck. Black jeans, black sneakers. In his right hand
+    a kitchen knife, point down, blood on the blade and dripping off it; the left hand hangs open."""
+    parts = sleep_leg(-1) + sleep_leg(1)
+    torso = RingSurface(resampled([
+        (2450, 440, 270, 0, 2.2),
+        (2560, 470, 285, 0, 2.2),  # the hem
+        (2800, 460, 275, 5, 2.2),
+        (3300, 455, 265, 15, 2.3),
+        (3700, 500, 270, 35, 2.4),
+        (4000, 560, 280, 60, 2.6),  # shoulders
+        (4200, 420, 250, 80, 2.2),
+        (4320, 150, 150, 90, 2.0),
+    ], 280), 14, bump=bumpy(13, 9.0, 1.2))
     parts.append(S(torso.build(cap_start=True, cap_end=True), HOODIE))
-    # The hood, bunched behind the neck
-    parts.append(S(smooth_sphere(0, 4250, -230, 330, 200, 180, n=10, stacks=5), HOODIE))
-    # A dark smear down the front
-    stain = [on_face(torso, [(60, 2900), (230, 3100), (170, 3500), (40, 3300)], 6),
-             on_face(torso, [(-200, 3200), (-80, 3350), (-130, 3550), (-230, 3400)], 6)]
-    parts.append(F(stain, (96, 8, 10)))
-    # Arms down, the right hand holding a knife point down
-    for side in (-1, 1):
-        parts.append(S(limb([(side * 500, 4000, 0), (side * 560, 3200, 40), (side * 590, 2350, 90)],
-                            [135, 125, 115], cap_start=True), HOODIE))
-        parts.append(S(smooth_sphere(side * 595, 2200, 100, 75, 120, 85, n=8, stacks=5), PALE))
-    parts.append(S(smooth_sphere(-595, 2200, 100, 30, 70, 30, n=6, stacks=4), HANDLE))
-    blade = [(-555, 2120, 150), (-640, 2120, 150), (-610, 1350, 165)]
-    parts.append(F([facing(blade, 1), facing([(x, y, z - 8) for x, y, z in blade], -1)], BLADE))
-    parts.append(S(limb([(0, 4250, 0), (0, SLEEP_NECK_Y + 100, 10)], [120, 110], cap_end=False), PALE))
+    hem = RingSurface([(2420, 458, 288, 0, 2.2), (2575, 488, 303, 0, 2.2)], 14)
+    parts.append(S(hem.build(), HOODIE_SHADE))
+    # The pocket, its openings, the drawstrings
+    parts.append(S(smooth_patch(torso, -230, 230, 2680, 3150, 5, nx=6, ny=3), HOODIE_SHADE))
+    seams = []
+    for s in (-1, 1):
+        seams += stroke(torso, [(s * 230, 3150), (s * 175, 2700)], 18, 8)
+    parts.append(F(seams, (112, 108, 104)))
+    for s in (-1, 1):
+        top = (s * 60, 4180, torso.front_z(s * 60, 4180) + 10)
+        end = (s * 75, 3700, torso.front_z(s * 75, 3700) + 18)
+        parts.append(S(bent_limb([top, ((top[0] + end[0]) / 2, 3940, (top[2] + end[2]) / 2 + 6), end], [12, 11, 14],
+                                 n=4), HOODIE_SHADE))
+    # Blood: a splash across the chest, a spray up from the belly, drips
+    parts += blood_on(torso, [(-170, 3700, 90), (-60, 3900, 50), (120, 3550, 38), (-230, 3250, 55),
+                              (60, 3050, 28)], 11.0)
+    parts += blood_on(torso, spray_on(torso, -120, 3350, 320, 3950, 7, 30, 21.0), 21.0)
+    # The hood, bunched up behind his neck, and its opening round it
+    parts.append(S(roughen(smooth_sphere(0, 4250, -200, 360, 210, 200, n=12, stacks=6), 30, 5.0), HOODIE))
+    parts.append(S(smooth_sphere(0, 4300, 60, 230, 80, 200, n=12, stacks=4), HOODIE_SHADE))
+    parts += sleep_arm(-1) + sleep_arm(1)
+
+    # The knife hand, a fist round the handle, the knuckles raw
+    fist = (-520, 2180, 115)
+    parts.append(S(roughen(smooth_sphere(*fist, 82, 110, 92, n=8, stacks=5), 10, 3.0), JEFF_SKIN))
+    knuckles = Smooth()
+    for k in range(4):
+        knuckles.extend(smooth_sphere(-520 + (k - 1.5) * 34, 2235 - abs(k - 1.5) * 10, 195, 22, 24, 22, n=5,
+                                      stacks=3))
+    parts.append(S(knuckles, KNUCKLE))
+    parts.append(S(bent_limb([(-570, 2250, 150), (-560, 2160, 200), (-535, 2120, 205)], [26, 24, 20], n=5),
+                   JEFF_SKIN))  # the thumb over the fingers
+    parts.append(S(bent_limb([(-520, 2330, 115), (-520, 2050, 118)], [32, 34], n=6), HANDLE))
+    parts.append(S(smooth_sphere(-520, 2030, 118, 52, 26, 30, n=6, stacks=3), BLADE))  # the bolster
+    # The blade, point down, broad side out: its spine straight, its edge curving in to the point
+    spine = [(-490, 2010), (-492, 1750), (-497, 1500), (-510, 1380), (-530, 1290)]
+    edge = [(-640, 2010), (-648, 1750), (-635, 1550), (-600, 1400), (-530, 1290)]
+    blade, bloody = [], []
+    for k in range(len(spine) - 1):
+        for zz, d in ((126, 1), (110, -1)):
+            quad = [(spine[k][0], spine[k][1], zz), (spine[k + 1][0], spine[k + 1][1], zz),
+                    (edge[k + 1][0], edge[k + 1][1], zz), (edge[k][0], edge[k][1], zz)]
+            if k == len(spine) - 2:
+                quad = quad[:3]
+            blade.append(facing(quad, d))
+            if k >= 1:
+                lift = 3 * d
+                f = 0.55 if k == 1 else 1.0  # the blood stops raggedly partway up
+                top = [(spine[k][0], spine[k][1] - 60 * (1 - f)), (edge[k][0], edge[k][1] - 140 * (1 - f))]
+                quad = [(top[0][0], top[0][1], zz + lift), (spine[k + 1][0], spine[k + 1][1], zz + lift),
+                        (edge[k + 1][0], edge[k + 1][1], zz + lift), (top[1][0], top[1][1], zz + lift)]
+                if k == len(spine) - 2:
+                    quad = quad[:3]
+                bloody.append(facing(quad, d))
+        blade.append(facing([(spine[k][0], spine[k][1], 110), (spine[k + 1][0], spine[k + 1][1], 110),
+                             (spine[k + 1][0], spine[k + 1][1], 126), (spine[k][0], spine[k][1], 126)], 1))
+    parts.append(F(blade, BLADE))
+    parts.append(F(bloody, BLOOD))
+    parts.append(S(smooth_sphere(-531, 1255, 118, 12, 20, 12, n=5, stacks=3), BLOOD))  # a drop about to fall
+
+    # The other hand hangs open, the fingers half curled
+    parts += spider_hand(1, (520, 2290, 100), norm((0.03, -1.0, 0.12)), (-0.3, 0.0, 0.95), JEFF_SKIN, KNUCKLE,
+                         palm=200, lengths=(240, 270, 255, 210), width=26, spread=10)
+    parts.append(S(limb([(0, 4250, 60), (0, SLEEP_NECK_Y + 100, 70)], [112, 102], cap_end=False), JEFF_SKIN))
     return parts
+
+
+def sleep_pose(p):
+    """Where his head's pieces go: cocked to one side, tipped forward, pushed out over his hunch."""
+    roll, pitch, out = SLEEP_HEAD_TURN
+    return shift(0, 0, out)(turn_x(pitch, (0, 0, 0))(turn_z(roll, (0, 0, 0))(p)))
+
+
+def sleep_head_surface():
+    return RingSurface(resampled([
+        (60, 60, 60, 40, 2.0),
+        (130, 150, 160, 40, 2.0),
+        (240, 215, 240, 30, 2.0),
+        (380, 245, 265, 20, 2.0),
+        (520, 252, 272, 15, 2.0),
+        (650, 245, 265, 5, 2.0),
+        (760, 215, 240, -5, 2.0),
+        (850, 150, 175, -15, 2.0),
+        (900, 40, 50, -20, 2.0),
+    ], 70), 14, bump=bumpy(7, 11.0, 2.0))
 
 
 def sleep_hair():
-    """Black hair, lit (so it's lost in the dark): a cap over the back of the head and strands hanging down."""
-    parts = [S(smooth_sphere(0, 560, -50, 290, 330, 290, n=12, stacks=6), HAIR)]
-    for i in range(9):
-        a = math.pi * (0.15 + 0.7 * i / 8)
-        x, z = 270 * math.cos(a), -40 - 250 * math.sin(a) * 0.9
-        parts.append(S(smooth_spike((x, 650, z), (x * 1.25, 60 - 40 * (i % 3), z * 1.2 - 40), 70, sides=5,
-                                    bend=(x * 0.1, 0, -40)), HAIR))
-    for x in (-180, -60, 70, 190):  # a fringe over the brow, ragged
-        parts.append(S(smooth_spike((x, 800, 150), (x * 1.1, 600, 290), 60, sides=5, bend=(0, 0, 30)), HAIR))
-    return parts
+    """Black hair, lit (so it's lost in the dark): matted, hanging to his shoulders in ropes, strands of it fallen
+    over his face."""
+    parts = [S(roughen(smooth_sphere(0, 560, -60, 282, 362, 300, n=12, stacks=6), 26, 13.0), HAIR)]
+    strands = Smooth()
+    for i in range(16):
+        a = math.pi * (-0.08 + 1.16 * i / 15)
+        x, z = 280 * math.cos(a), -60 - 280 * math.sin(a) * 0.95
+        drop = 560 + 260 * abs(noise(i * 29.0, 3.0, 1.0, 5.0)) + 120 * (i % 3)
+        strands.extend(smooth_spike((x, 720, z), (x * 1.3, 720 - drop, z * 1.25 - 40), 62 - 3 * (i % 4), sides=5,
+                                    bend=(x * 0.12, 0, -50)))
+    for x, length, lean in ((-215, 330, -20), (-150, 250, 15), (-90, 300, 25), (-30, 420, 30), (30, 220, -10),
+                            (90, 330, -15), (150, 380, 25), (215, 300, 10)):  # matted over his forehead, in his eyes
+        strands.extend(smooth_spike((x * 0.9, 900, 80), (x + lean, 880 - length, 300), 62, sides=5,
+                                    bend=(0, 20, 60)))
+    parts.append(S(strands, HAIR))
+    return move(parts, sleep_pose)
 
 
 def sleep_face():
-    """His face, unlit: (colour, faces) parts for a vertex coloured display list."""
-    head = head_surface(430, 250, 360, 270, cz=20)
-    skin = []
-    for k in range(len(head.rings) - 1):
-        r0 = head.ring_points(head.rings[k])
-        r1 = head.ring_points(head.rings[k + 1])
-        for i in range(len(r0)):
-            j = (i + 1) % len(r0)
-            skin.append([r0[i], r0[j], r1[j], r1[i]])
-    out = [((246, 246, 244), [facing_out(q, head) for q in skin])]
-    eyes, whites, irises = [], [], []
-    for side in (-1, 1):
-        eyes += ring_on(head, side * 100, 500, 40, 95, 5, ry_scale=1.1)  # burned black around them
-        whites.append(oval_on(head, side * 100, 500, 42, 46, 7))
-        irises.append(oval_on(head, side * 100, 500, 15, 15, 10, n=8))
-    out += [((6, 4, 6), eyes), ((250, 250, 250), whites), ((40, 40, 40), irises)]
-    # The grin, carved up to the cheeks: a thin dark mouth, and red cuts up from its corners
-    w = 210
+    """His face, unlit: (colour, faces) parts for a vertex coloured display list (a colour can be a function of the
+    point, so the light that isn't there is painted on). Bleached white skin like leather, lumpy, burned in patches;
+    no eyelids, the eyes ringed black and raw red where they were burned off, bloodshot and staring, blood run down
+    from them like tears; the grin carved up into his cheeks, ragged, the teeth showing through it, dried blood at
+    its corners."""
+    head = sleep_head_surface()
+
+    def skin(p):
+        x, y, z = p
+        _, rx, rz, cz, _ = head.params(y)
+        side = min(1.0, abs(x) / max(rx, 1.0))
+        n = noise(x * 3, y * 3, z * 3, 17.0)
+        if y > 770 + 40 * n:  # his scalp, where his hair grows from
+            return (14, 12, 12)
+        v = 244 - 80 * side ** 2.5 - 40 * (y < 120) + 10 * n  # darker round its edges and under the chin
+        return (int(max(0, v)), int(max(0, v - 4 + 5 * n)), int(max(0, v - 8)))
+
+    # Only the front: his hair covers the rest
+    out = [(skin, [q for q in surface_quads(head) if sum(p[2] for p in q) / 4 > head.params(q[0][1])[3] - 40])]
+    scars = []
+    scars += disc_on(head, -150, 700, 70, 50, 2, n=10, rings=1, wobble=0.5, seed=4.0)
+    scars += disc_on(head, 175, 330, 60, 80, 2, n=10, rings=1, wobble=0.5, seed=8.0)
+    scars += stroke(head, [(-200, 420), (-150, 350), (-160, 260)], 9, 3)
+    scars += stroke(head, [(120, 760), (40, 720)], 8, 3)
+    out.append(((206, 178, 174), scars))
+    out.append(((96, 70, 70), disc_on(head, 205, 610, 32, 44, 3, n=8, rings=1, wobble=0.4, seed=9.0)))
+
+    # The eyes: burned rims, raw inside them, eyeballs standing out, blood run from their corners
+    rims, raw, tears = [], [], []
+    for s in (-1, 1):
+        rims += disc_on(head, s * 100, 520, 96, 86, 4, n=12, rings=1, wobble=0.35, seed=s + 1.0)
+        raw += disc_on(head, s * 100, 520, 66, 60, 6, n=12, rings=1, wobble=0.2, seed=s + 2.0)
+        tears += stroke(head, drip(s * 100 + s * 18, 460, 150 + 70 * (s > 0), 14, s + 3.0), 15, 7, taper=True,
+                        seg=60)
+    out += [((12, 4, 4), rims), ((112, 12, 16), raw), ((122, 0, 6), tears)]
+    for s, look in ((-1, (4.0, -3.0)), (1, (-6.0, 2.0))):
+        z = head.front_z(s * 100, 520) - 20
+        for kind, colour, geo in eye(54, 9, 21, (64, 72, 66), (238, 234, 226), (186, 24, 30), s + 6.0, look, k=4):
+            if kind == "smooth":  # the eyeball as quads, only the half of it that stands out of his head
+                geo = [q for q in surface_quads(ball(54, 8, 4)) if sum(p[2] for p in q) > -40]
+            out.append((colour, moved_faces(geo, shift(s * 100, 520, z))))
+
+    # What's left of his nose
+    out.append(((30, 10, 10), disc_on(head, -24, 400, 16, 12, 4, n=6, rings=1, wobble=0.3, seed=1.0)
+                + disc_on(head, 24, 400, 16, 12, 4, n=6, rings=1, wobble=0.3, seed=2.0)))
+
+    # The grin, carved: a dark slit up into the cheeks, its edges raw, his teeth behind it
+    w = 225
 
     def top(x):
-        return 290 + 110 * (x / w) ** 4
+        return 300 + 160 * (min(abs(x), w) / w) ** 3
+
+    def gap(x):
+        return 10 + 34 * max(0.0, 1 - (min(abs(x), w) / w) ** 2)
 
     def bottom(x):
-        return top(x) - 20 - 20 * (1 - (x / w) ** 2)
+        return top(x) - gap(x)
 
-    out.append(((110, 0, 6), band(head, -w, w, top, bottom, 6, steps=12)))
+    edges = band(head, -w - 10, w + 10, lambda x: top(x) + 13, lambda x: bottom(x) - 13, 4, steps=16)
     cuts = []
-    for side in (-1, 1):
-        x0 = side * w
-        cuts.append(on_face(head, [(x0 - side * 10, top(w) - 30), (x0 + side * 30, top(w) - 10),
-                                   (x0 + side * 25, top(w) + 70), (x0 - side * 5, top(w) + 55)], 7))
-    out.append(((150, 0, 8), cuts))
-    return out
+    for s in (-1, 1):
+        x0, y0 = s * w, top(w) - 6
+        edges += stroke(head, [(x0, y0), (x0 + s * 14, y0 + 44), (x0 + s * 4, y0 + 80), (x0 + s * 22, y0 + 120)],
+                        30, 4, seg=40)
+        cuts += stroke(head, [(x0, y0), (x0 + s * 14, y0 + 44), (x0 + s * 4, y0 + 80), (x0 + s * 22, y0 + 120)], 12,
+                       7, taper=True, seg=40)
+    out.append(((136, 10, 14), edges))
+    out.append(((20, 0, 2), band(head, -w, w, top, bottom, 6, steps=16) + cuts))
+    teeth = []
+    for k in range(12):
+        if k in (3, 8):  # gone
+            continue
+        x0 = -0.6 * w + 1.2 * w * k / 12 + 4
+        x1 = -0.6 * w + 1.2 * w * (k + 1) / 12 - 4
+        long = 0.5 + 0.35 * abs(noise(k * 19.0, 2.0, 0.0, 3.0))
+        teeth.append(on_face(head, [(x0, top(x0) - long * gap(x0)), (x1, top(x1) - (long - 0.12) * gap(x1)),
+                                    (x1, top(x1) - 3), (x0, top(x0) - 3)], 8))
+    out.append(((200, 186, 140), teeth))
+    crust = []
+    for s in (-1, 1):
+        crust += disc_on(head, s * (w - 10), top(w) - 30, 26, 22, 7, n=7, rings=1, wobble=0.5, seed=s + 12.0)
+        crust += stroke(head, drip(s * (w - 30), top(w) - 40, 190 + 60 * (s < 0), 18, s + 13.0), 16, 7, taper=True,
+                        seg=60)
+    out.append(((84, 4, 6), crust))
+    return [(colour, moved_faces(faces, sleep_pose)) for colour, faces in out]
 
 
 def facing_out(quad, surface):
@@ -397,13 +843,14 @@ def facing_out(quad, surface):
 
 
 def coloured_parts(mesh, parts):
+    """A vertex coloured display list from (colour, faces) parts; a colour may be a function of the point."""
     colours = {}
     faces = []
     for colour, fs in parts:
         for f in fs:
             faces.append(f)
             for p in f:
-                colours[p] = colour
+                colours[p] = colour(p) if callable(colour) else colour
     return mesh.coloured_dl(faces, lambda p: colours[p])
 
 
@@ -1009,55 +1456,32 @@ def corrosion():
 
 
 def main():
-    out = Path(sys.argv[1]) if len(sys.argv) > 1 else OUT
+    args = sys.argv[1:]
+    outs = [Path(a) for a in args[:3]] + OUTS[len(args[:3]):]
+    setup = setup_dl("sVisitorSetupDL", LIT_OPA, "Its body: opaque, lit, untextured")
 
     tall = Mesh("sTallManVtx")
-    tall_dl = gfx("sTallManDL", emit_parts(tall, tall_man()))
-    tendrils_dl = gfx("sTallTendrilsDL", emit_parts(tall, tall_tendrils()))
+    dls = [gfx("sTallManDL", emit_parts(tall, tall_man())), gfx("sTallTendrilsDL", emit_parts(tall, tall_tendrils()))]
+    write_model(outs[0], "The Tall Man", f"#define TALL_MAN_HEIGHT ({TALL_HEIGHT}.0f)\n\n", tall, [setup], dls)
 
     smile = Mesh("sSmileManVtx")
-    smile_body_dl = gfx("sSmileBodyDL", emit_parts(smile, smile_body()))
-    grin_dl = gfx("sSmileGrinDL", emit_parts(smile, smile_head(True)))
-    frown_dl = gfx("sSmileFrownDL", emit_parts(smile, smile_head(False)))
+    dls = [gfx("sSmileBodyDL", emit_parts(smile, smile_body())),
+           gfx("sSmileHeadDL", emit_parts(smile, smile_head())),
+           gfx("sSmileGrinDL", emit_parts(smile, smile_mouth(True))),
+           gfx("sSmileFrownDL", emit_parts(smile, smile_mouth(False)))]
+    write_model(outs[1], "The Smiling Man", f"#define SMILE_MAN_NECK_Y ({SMILE_NECK_Y}.0f)\n\n", smile, [setup], dls)
 
     sleep = Mesh("sSleepManVtx")
-    sleep_body_dl = gfx("sSleepBodyDL", emit_parts(sleep, sleep_body()))
-    hair_dl = gfx("sSleepHairDL", emit_parts(sleep, sleep_hair()))
-    face_dl = gfx("sSleepFaceDL", coloured_parts(sleep, sleep_face()))
-
-    setup = "\n".join([
-        setup_dl("sVisitorSetupDL", LIT_OPA, "The visitors' bodies: opaque, lit, untextured"),
-        setup_dl("sVisitorFaceSetupDL", GLOW_FRONT,
-                 "A face that's there in the dark: unlit, no fog, colour = vertex colour x primitive colour"),
-    ])
-    text = f"""// Generated by tools/ben/gen_ben_visitors.py; edit that script instead of this file.
-// The Expanded Horror visitors. +Y up, +Z forward, +X to its left; 1/100 of a world unit.
-// clang-format off
-
-#define TALL_MAN_HEIGHT ({TALL_HEIGHT}.0f)
-#define SMILE_MAN_NECK_Y ({SMILE_NECK_Y}.0f)
-#define SLEEP_MAN_NECK_Y ({SLEEP_NECK_Y}.0f)
-
-{tall.vtx_array()}
-{smile.vtx_array()}
-{sleep.vtx_array()}
-{setup}
-{tall_dl}
-{tendrils_dl}
-{smile_body_dl}
-{grin_dl}
-{frown_dl}
-{sleep_body_dl}
-{hair_dl}
-{face_dl}
-// clang-format on
-"""
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(text)
-    print(f"wrote {out} ({len(tall.vtx)} tall, {len(smile.vtx)} smiling, {len(sleep.vtx)} sleep vertices)")
+    dls = [gfx("sSleepBodyDL", emit_parts(sleep, sleep_body())),
+           gfx("sSleepHairDL", emit_parts(sleep, sleep_hair())),
+           gfx("sSleepFaceDL", coloured_parts(sleep, sleep_face()))]
+    face = setup_dl("sVisitorFaceSetupDL", GLOW_FRONT,
+                    "A face that's there in the dark: unlit, no fog, colour = vertex colour x primitive colour")
+    write_model(outs[2], "\"Go to sleep.\"", f"#define SLEEP_MAN_NECK_Y ({SLEEP_NECK_Y}.0f)\n\n", sleep, [setup, face],
+                dls)
 
     # Each SCP has an actor (and so an overlay) of its own, so only the one that's here is in memory
-    outs = [Path(a) for a in sys.argv[2:5]] + [p for p in SCP_OUTS[len(sys.argv[2:5]):]]
+    outs = [Path(a) for a in args[3:6]] + SCP_OUTS[len(args[3:6]):]
     setup = setup_dl("sScpSetupDL", LIT_OPA, "Its body: opaque, lit, untextured")
     ground = setup_dl("sScpGroundSetupDL", GLOW,
                       "What it leaves on the ground: unlit, colour and alpha = vertex colour x primitive colour, "
@@ -1081,6 +1505,21 @@ def main():
     s106_dl = gfx("sScp106DL", emit_parts(s106, old_man()))
     pool_dl = gfx("sScpPoolDL", s106.coloured_dl(pool_faces, pool_colour))
     write_scp(outs[2], "SCP-106", "", s106, [setup, ground], [s106_dl, pool_dl])
+
+
+def write_model(out, name, defines, mesh, setups, dls):
+    body = "\n".join(setups + dls)
+    text = f"""// Generated by tools/ben/gen_ben_visitors.py; edit that script instead of this file.
+// {name}, an Expanded Horror visitor. +Y up, +Z forward, +X to its left; 1/100 of a world unit.
+// clang-format off
+
+{defines}{mesh.vtx_array()}
+{body}
+// clang-format on
+"""
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(text)
+    print(f"wrote {out} ({len(mesh.vtx)} vertices)")
 
 
 def write_scp(out, name, defines, mesh, setups, dls):

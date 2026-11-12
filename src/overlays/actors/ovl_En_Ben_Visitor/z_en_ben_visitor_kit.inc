@@ -1,6 +1,7 @@
 /**
  * The visitors' kit: what every visitor needs (whether you can see it, somewhere to stand, holding Link, hurting him
- * without killing him), shared by En_Ben_Visitor (the stories) and the SCPs (En_Ben_Scp173, 096, 106). Each includes it
+ * without killing him), shared by the visitors from other stories (En_Ben_Visitor, En_Ben_Smile, En_Ben_Sleep) and the
+ * SCPs (En_Ben_Scp173, 096, 106). Each includes it
  * once; each has its own copy, since one overlay can't call into another. Before it: VISITOR_PLACE_GIVE_UP, and an
  * actor on the EnBenVisitor struct (z_en_ben_visitor.h) with its `height` set in Init.
  */
@@ -161,6 +162,9 @@ static s32 EnBenVisitor_Arrive(EnBenVisitor* this, PlayState* play, f32 dist, s3
     return false;
 }
 
+// Only the ones that walk on the ground need it (the Smiling Man, SCP-173 and SCP-096)
+#if (defined(EN_BEN_VISITOR) && (EN_BEN_VISITOR == BEN_VISITOR_SMILE)) || \
+    (defined(EN_BEN_SCP) && (EN_BEN_SCP != BEN_VISITOR_OLD_MAN))
 /**
  * One step along `yaw`, if there's ground there and nothing in the way.
  */
@@ -173,3 +177,4 @@ static s32 EnBenVisitor_Step(EnBenVisitor* this, PlayState* play, s16 yaw, f32 s
     this->actor.world.pos = pos;
     return true;
 }
+#endif

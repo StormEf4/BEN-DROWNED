@@ -31,11 +31,12 @@
  * cutscenes, the game's minigames and the Moon Children, and it comes a little more often as the story goes on.
  *
  * All of this is the Expanded Horror (BEN_EXPANDED, DECISIONS D17): with it off there's no Termina director at all.
- * It also sends the visitors from other stories (En_Ben_Visitor): once in a while, a little after you arrive
- * somewhere one of them belongs, one of them comes instead (the Tall Man in the woods and the fields, the Smiling Man
- * in town at night, "Go to sleep." indoors at night), and nothing else happens while it's here. Three of the SCP
- * Foundation's come the same way (En_Ben_Scp173, 096 and 106; DECISIONS D18): the sculpture in the temples and dark
- * places, the shy one in the open country, the old man in the swamp and the graveyard at night and under the graveyard.
+ * It also sends the visitors from other stories (En_Ben_Visitor, En_Ben_Smile, En_Ben_Sleep): once in a while, a little
+ * after you arrive somewhere one of them belongs, one of them comes instead (the Tall Man in the woods and the fields,
+ * the Smiling Man in town at night, "Go to sleep." indoors at night), and nothing else happens while it's here. Three
+ * of the SCP Foundation's come the same way (En_Ben_Scp173, 096 and 106; DECISIONS D18): the sculpture in the temples
+ * and dark places, the shy one in the open country, the old man in the swamp and the graveyard at night and under the
+ * graveyard.
  */
 
 #define EN_BEN_TERMINA_FIRST 900           // after you arrive, the first thing is at least this long (45 s)
@@ -130,10 +131,10 @@ typedef struct EnBenVisitorLine {
     /* 0x4 */ f32 chance;   // how likely it comes, the one time a scene visit gives it the chance
 } EnBenVisitorLine;
 
-// Which actor each of them is (BEN_VISITOR_*): the SCPs each have their own, so only that model is in memory
+// Which actor each of them is (BEN_VISITOR_*): each has its own, so only its model is in memory
 static s16 sVisitorActors[BEN_VISITOR_COUNT] = {
-    ACTOR_EN_BEN_VISITOR, ACTOR_EN_BEN_VISITOR, ACTOR_EN_BEN_VISITOR,
-    ACTOR_EN_BEN_SCP173,  ACTOR_EN_BEN_SCP096,  ACTOR_EN_BEN_SCP106,
+    ACTOR_EN_BEN_VISITOR, ACTOR_EN_BEN_SMILE,  ACTOR_EN_BEN_SLEEP,
+    ACTOR_EN_BEN_SCP173,  ACTOR_EN_BEN_SCP096, ACTOR_EN_BEN_SCP106,
 };
 
 // Where each of them belongs
