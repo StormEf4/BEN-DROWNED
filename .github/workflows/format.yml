@@ -8,7 +8,8 @@ on:
 jobs:
   build:
     name: Check format
-    runs-on: ubuntu-latest
+    # clang-format-14 isn't packaged for the newest Ubuntu that ubuntu-latest now points to.
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout reposistory
@@ -16,6 +17,7 @@ jobs:
 
       - name: Install package requirements
         run: |
+          sudo apt-get update
           sudo apt-get install -y python3 clang-format-14 clang-tidy-14
 
       - name: Check formatting

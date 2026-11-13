@@ -5,6 +5,7 @@
  */
 
 #include "z_file_select.h"
+#include "ben/ben.h" // BEN
 #include "z64rumble.h"
 
 // When choosing a file to copy or erase, the 6 main menu buttons are placed at these offsets
@@ -978,6 +979,9 @@ void FileSelect_EraseConfirm(GameState* thisx) {
         }
         this->connectorAlpha[this->selectedFileIndex] = 0;
         Audio_PlaySfx(NA_SE_EV_DIAMOND_SWITCH);
+        if (Ben_IsBenName(this->fileNames[this->selectedFileIndex])) {
+            Audio_PlaySfx(NA_SE_VO_FR_LAUGH_0); // BEN: he doesn't mind. He'll be back.
+        }
         this->actionTimer = 4;
         this->nextTitleLabel = FS_TITLE_ERASE_COMPLETE;
         Rumble_Request(200.0f, 255, 20, 150);

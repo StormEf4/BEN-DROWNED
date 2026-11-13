@@ -4445,6 +4445,11 @@ void Message_DrawMain(PlayState* play, Gfx** gfxP) {
                 break;
 
             case MSGMODE_OCARINA_PLAYING:
+                // BEN: the Song of Unhealing, heard beside the game's songs (Ben_OnOcarina): free play has ended its
+                // way, and nothing below looks at the notes this frame
+                if (Ben_OnOcarina(play)) {
+                    break;
+                }
                 msgCtx->ocarinaStaff = AudioOcarina_GetPlayingStaff();
 
                 if ((u32)msgCtx->ocarinaStaff->pos != 0) {
@@ -5850,6 +5855,12 @@ void Message_Update(PlayState* play) {
                     msgCtx->stateTimer = 1;
                 }
                 break;
+            }
+
+            // BEN: from Session 3 on, the Salesman laughs at the end of everything Tatl says (STORY_BIBLE.md C13)
+            if ((Ben_GetSession() >= BEN_SESSION_BEN) && (msgCtx->talkActor != NULL) &&
+                (msgCtx->talkActor == GET_PLAYER(play)->tatlActor)) {
+                Audio_PlaySfx(NA_SE_VO_FR_LAUGH_0);
             }
 
             msgCtx->msgLength = 0;

@@ -1295,6 +1295,7 @@ void Sram_OpenSave(FileSelectState* fileSelect, SramContext* sramCtx) {
             gSaveContext.nextCutsceneIndex = 0;
             gSaveContext.save.playerForm = PLAYER_FORM_HUMAN;
         }
+        Ben_OpenBootFile(); // BEN: BEN's file always opens at Stone Tower on the final morning
     } else {
         gSaveContext.save.entrance = sOwlWarpEntrances[(void)0, gSaveContext.save.owlWarpId];
         if ((gSaveContext.save.entrance == ENTRANCE(SOUTHERN_SWAMP_POISONED, 10)) &&
@@ -1853,6 +1854,137 @@ void Sram_InitSave(FileSelectState* fileSelect2, SramContext* sramCtx) {
 /**
  *  Write the SaveOptions of SaveContext to the save buffer
  */
+/**
+ * BEN: a cartridge with nothing on it already has a file called BEN (STORY_BIBLE.md C3). If both slots are empty,
+ * write BEN's save into slot 1, the same way a new file is written. Erase it and make your own and it stays gone,
+ * unless you erase everything.
+ */
+s32 Sram_BenPlantBootSave(GameState* gameState, SramContext* sramCtx) {
+    FileSelectState* fileSelect = (FileSelectState*)gameState;
+    u16 time = gSaveContext.save.time;
+
+    if (!BEN_BOOT_SAVE || !gSaveContext.flashSaveAvailable || SLOT_OCCUPIED(fileSelect, 0) ||
+        SLOT_OCCUPIED(fileSelect, 1)) {
+        return false;
+    }
+
+    Ben_MakeBootSave();
+    gSaveContext.save.isOwlSave = false;
+    gSaveContext.save.saveInfo.checksum = 0;
+    gSaveContext.save.saveInfo.checksum = Sram_CalcChecksum(&gSaveContext.save, sizeof(Save));
+
+    bzero(sramCtx->saveBuf, SAVE_BUFFER_SIZE);
+    Lib_MemCpy(sramCtx->saveBuf, &gSaveContext.save, sizeof(Save));
+    Lib_MemCpy(&sramCtx->saveBuf[0x2000], &gSaveContext.save, sizeof(Save));
+    Sram_SyncWriteToFlash(sramCtx, gFlashSaveStartPages[0], gFlashSpecialSaveNumPages[0]);
+
+    gSaveContext.save.time = time;
+    return true;
+}
+
+/**
+ * BEN: Session 3 ends in the Deku King's chamber (STORY_BIBLE.md C15). Save the file the way the Song of Time does,
+ * renamed DROWNED, and if the other slot is empty, BEN is in it now.
+ */
+void Sram_BenEndSessionBen(PlayState* play) {
+    SramContext* sramCtx = &play->sramCtx;
+    s32 otherFile;
+    s32 i;
+
+    Ben_BecomeDrowned();
+    Sram_SaveEndOfCycle(play);
+    gSaveContext.timerStates[TIMER_ID_MOON_CRASH] = TIMER_STATE_OFF;
+    func_8014546C(sramCtx);
+
+    if ((gSaveContext.fileNum == 0xFF) || !gSaveContext.flashSaveAvailable) {
+        return;
+    }
+    SysFlashrom_WriteSync(sramCtx->saveBuf, gFlashSaveStartPages[gSaveContext.fileNum * 2],
+                          gFlashSpecialSaveNumPages[gSaveContext.fileNum * 2]);
+
+    if (!BEN_BOOT_SAVE) {
+        return;
+    }
+    otherFile = gSaveContext.fileNum ^ 1;
+    if (SysFlashrom_Read(sramCtx->saveBuf, gFlashSaveStartPages[otherFile * 2], 1) == 0) {
+        char* newf = (char*)&sramCtx->saveBuf[offsetof(Save, saveInfo.playerData.newf)];
+
+        for (i = 0; i < 6; i++) {
+            if (newf[i] != "ZELDA3"[i]) {
+                break;
+            }
+        }
+        if (i == 6) {
+            return; // that one's yours
+        }
+    }
+
+    // gSaveContext is about to be thrown away: the game goes back to the title screen.
+    Ben_MakeBootSave();
+    gSaveContext.save.isOwlSave = false;
+    gSaveContext.save.saveInfo.checksum = 0;
+    gSaveContext.save.saveInfo.checksum = Sram_CalcChecksum(&gSaveContext.save, sizeof(Save));
+    bzero(sramCtx->saveBuf, SAVE_BUFFER_SIZE);
+    Lib_MemCpy(sramCtx->saveBuf, &gSaveContext.save, sizeof(Save));
+    Lib_MemCpy(&sramCtx->saveBuf[0x2000], &gSaveContext.save, sizeof(Save));
+    Sram_SyncWriteToFlash(sramCtx, gFlashSaveStartPages[otherFile * 2], gFlashSpecialSaveNumPages[otherFile * 2]);
+}
+
+/**
+ * BEN: write the story (and only the story) into this file's cycle save, both copies, so a session that has moved on
+ * stays moved on even if the game is turned off before it next saves. Everything else in the save stays as it was.
+ */
+void Sram_BenCommitStory(PlayState* play) {
+    SramContext* sramCtx = &play->sramCtx;
+    s32 copy;
+    s32 i;
+
+    if ((gSaveContext.fileNum == 0xFF) || !gSaveContext.flashSaveAvailable) {
+        return;
+    }
+    if (SysFlashrom_Read(sramCtx->saveBuf, gFlashSaveStartPages[gSaveContext.fileNum * 2],
+                         gFlashSpecialSaveNumPages[gSaveContext.fileNum * 2]) != 0) {
+        return;
+    }
+
+    for (copy = 0; copy < 2; copy++) {
+        Save* save = (Save*)&sramCtx->saveBuf[copy * 0x2000];
+
+        for (i = 0; i < 6; i++) {
+            if (save->saveInfo.playerData.newf[i] != "ZELDA3"[i]) {
+                break;
+            }
+        }
+        if (i != 6) {
+            continue; // not a save
+        }
+        Lib_MemCpy(save->saveInfo.unk_DF4, gSaveContext.save.saveInfo.unk_DF4, sizeof(save->saveInfo.unk_DF4));
+        save->saveInfo.checksum = 0;
+        save->saveInfo.checksum = Sram_CalcChecksum(save, sizeof(Save));
+    }
+    SysFlashrom_WriteSync(sramCtx->saveBuf, gFlashSaveStartPages[gSaveContext.fileNum * 2],
+                          gFlashSpecialSaveNumPages[gSaveContext.fileNum * 2]);
+}
+
+/**
+ * BEN: the end (STORY_BIBLE.md C21). The counter resets: the file is saved the way the Song of Time saves it, renamed
+ * BEN, and from now on it's his.
+ */
+void Sram_BenEndGame(PlayState* play) {
+    SramContext* sramCtx = &play->sramCtx;
+
+    Ben_BecomeBen();
+    Sram_SaveEndOfCycle(play);
+    gSaveContext.timerStates[TIMER_ID_MOON_CRASH] = TIMER_STATE_OFF;
+    func_8014546C(sramCtx);
+
+    if ((gSaveContext.fileNum == 0xFF) || !gSaveContext.flashSaveAvailable) {
+        return;
+    }
+    SysFlashrom_WriteSync(sramCtx->saveBuf, gFlashSaveStartPages[gSaveContext.fileNum * 2],
+                          gFlashSpecialSaveNumPages[gSaveContext.fileNum * 2]);
+}
+
 void Sram_WriteSaveOptionsToBuffer(SramContext* sramCtx) {
     if (gSaveContext.flashSaveAvailable) {
         gSaveContext.options.language = LANGUAGE_ENG;

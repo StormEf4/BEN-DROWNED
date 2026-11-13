@@ -5159,6 +5159,48 @@ beginseg
 endseg
 
 beginseg
+    name "ovl_En_Ben_Visitor"
+    compress
+    include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Ben_Visitor/z_en_ben_visitor.o"
+    include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Ben_Visitor/ovl_En_Ben_Visitor_reloc.o"
+endseg
+
+beginseg
+    name "ovl_En_Ben_Scp173"
+    compress
+    include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Ben_Scp173/z_en_ben_scp173.o"
+    include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Ben_Scp173/ovl_En_Ben_Scp173_reloc.o"
+endseg
+
+beginseg
+    name "ovl_En_Ben_Scp096"
+    compress
+    include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Ben_Scp096/z_en_ben_scp096.o"
+    include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Ben_Scp096/ovl_En_Ben_Scp096_reloc.o"
+endseg
+
+beginseg
+    name "ovl_En_Ben_Scp106"
+    compress
+    include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Ben_Scp106/z_en_ben_scp106.o"
+    include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Ben_Scp106/ovl_En_Ben_Scp106_reloc.o"
+endseg
+
+beginseg
+    name "ovl_En_Ben_Smile"
+    compress
+    include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Ben_Smile/z_en_ben_smile.o"
+    include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Ben_Smile/ovl_En_Ben_Smile_reloc.o"
+endseg
+
+beginseg
+    name "ovl_En_Ben_Sleep"
+    compress
+    include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Ben_Sleep/z_en_ben_sleep.o"
+    include "$(BUILD_DIR)/src/overlays/actors/ovl_En_Ben_Sleep/ovl_En_Ben_Sleep_reloc.o"
+endseg
+
+beginseg
     name "gameplay_keep"
     compress
     romalign 0x1000
