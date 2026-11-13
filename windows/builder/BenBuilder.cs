@@ -775,10 +775,23 @@ namespace BenDrowned
             }
 
             Status("Getting the newest version of the project...", ColText);
-            string script =
-                "if [ -d " + ProjectFolder + "/.git ]; then " +
-                "git -C " + ProjectFolder + " pull --ff-only || echo \"Couldn't update; building the version you have.\"; " +
-                "else git clone " + RepoUrl + " " + ProjectFolder + "; fi";
+            string script;
+            if (BuildBranch.Name.Length == 0) {
+                script =
+                    "if [ -d " + ProjectFolder + "/.git ]; then " +
+                    "git -C " + ProjectFolder + " pull --ff-only || echo \"Couldn't update; building the version you have.\"; " +
+                    "else git clone " + RepoUrl + " " + ProjectFolder + "; fi";
+            } else {
+                // This builder was made from one branch (a version still being tested): build exactly that
+                string branch = "'" + BuildBranch.Name + "'";
+                Log("Building the version on " + BuildBranch.Name + ".");
+                script =
+                    "if [ -d " + ProjectFolder + "/.git ]; then " +
+                    "{ git -C " + ProjectFolder + " fetch origin " + branch + " && " +
+                    "git -C " + ProjectFolder + " checkout -q -B " + branch + " FETCH_HEAD; } || " +
+                    "echo \"Couldn't update; building the version you have.\"; " +
+                    "else git clone -b " + branch + " " + RepoUrl + " " + ProjectFolder + "; fi";
+            }
             if (Wsl(distro, false, "bash", "-c", script) != 0) {
                 Log("Downloading the project failed. Check your internet connection and try again.");
                 return false;

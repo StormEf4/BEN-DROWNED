@@ -25,6 +25,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Note the branch it builds
+        shell: pwsh
+        env:
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          # A builder made from a pull request builds that pull request's version (windows/builder/BuildBranch.cs)
+          if ($env:BRANCH -notmatch '^[A-Za-z0-9._/-]+$') { Write-Error "Unexpected branch name"; exit 1 }
+          $text = (Get-Content windows\builder\BuildBranch.cs -Raw) -replace 'Name = ""', "Name = `"$env:BRANCH`""
+          Set-Content windows\builder\BuildBranch.cs $text -NoNewline
+
       - name: Compile
         shell: pwsh
         run: |
@@ -34,7 +44,7 @@ jobs:
             /reference:System.Windows.Forms.dll /reference:System.Drawing.dll `
             "/win32icon:$src\ben.ico" "/resource:$src\ben.ico,BenDrowned.ben.ico" "/resource:$src\ben.png,BenDrowned.ben.png" `
             "/resource:$src\laugh.wav,BenDrowned.laugh.wav" `
-            $src\BenBuilder.cs $src\Laugh.cs
+            $src\BenBuilder.cs $src\Laugh.cs $src\BuildBranch.cs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Upload build artifact
