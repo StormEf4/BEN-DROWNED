@@ -261,6 +261,91 @@ namespace BenDrowned
         }
     }
 
+    // The options' checkboxes and choices, drawn big and bright so they read on the dark panel: a 20 px box (or ring)
+    // with a gold edge, filled blood red with a bone-white tick (or dot) when it's on, and the text beside it in full
+    // bone white. Windows' own flat ones were a tiny dim square on near-black.
+    static class ToggleArt
+    {
+        internal const int Mark = 20;
+        internal const int Gap = 10;
+
+        internal static Size Measure(Control c)
+        {
+            var text = TextRenderer.MeasureText(c.Text, c.Font);
+            return new Size(Mark + Gap + text.Width + 6, Math.Max(Mark, text.Height) + 8);
+        }
+
+        internal static void Paint(Control c, Graphics g, bool on, bool round, bool hot)
+        {
+            g.Clear(c.BackColor);
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            var box = new Rectangle(2, (c.Height - Mark) / 2, Mark - 2, Mark - 2);
+            var edge = hot ? Color.FromArgb(255, 214, 120) : BuilderForm.ColGold;
+            using (var fill = new SolidBrush(on ? BuilderForm.ColAccent : BuilderForm.ColBack))
+            using (var pen = new Pen(edge, 2f))
+            using (var mark = new Pen(BuilderForm.ColText, 3f) { StartCap = LineCap.Round, EndCap = LineCap.Round,
+                                                                LineJoin = LineJoin.Round }) {
+                if (round) {
+                    g.FillEllipse(fill, box);
+                    g.DrawEllipse(pen, box);
+                    if (on) {
+                        using (var dot = new SolidBrush(BuilderForm.ColText)) {
+                            g.FillEllipse(dot, box.X + 5, box.Y + 5, box.Width - 10, box.Height - 10);
+                        }
+                    }
+                } else {
+                    g.FillRectangle(fill, box);
+                    g.DrawRectangle(pen, box);
+                    if (on) {
+                        g.DrawLines(mark, new[] { new Point(box.X + 4, box.Y + 9), new Point(box.X + 8, box.Y + 13),
+                                                  new Point(box.X + 14, box.Y + 4) });
+                    }
+                }
+            }
+            var size = TextRenderer.MeasureText(c.Text, c.Font);
+            TextRenderer.DrawText(g, c.Text, c.Font, new Point(Mark + Gap, (c.Height - size.Height) / 2),
+                                  hot ? Color.White : BuilderForm.ColText, TextFormatFlags.NoPrefix);
+        }
+    }
+
+    sealed class BigCheck : CheckBox
+    {
+        bool hot;
+
+        public BigCheck()
+        {
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer |
+                     ControlStyles.ResizeRedraw, true);
+            Cursor = Cursors.Hand;
+        }
+
+        public override Size GetPreferredSize(Size proposedSize) { return ToggleArt.Measure(this); }
+        protected override void OnMouseEnter(EventArgs e) { hot = true; Invalidate(); base.OnMouseEnter(e); }
+        protected override void OnMouseLeave(EventArgs e) { hot = false; Invalidate(); base.OnMouseLeave(e); }
+        protected override void OnGotFocus(EventArgs e) { Invalidate(); base.OnGotFocus(e); }
+        protected override void OnLostFocus(EventArgs e) { Invalidate(); base.OnLostFocus(e); }
+        protected override void OnPaint(PaintEventArgs e) { ToggleArt.Paint(this, e.Graphics, Checked, false, hot || Focused); }
+    }
+
+    sealed class BigChoice : RadioButton
+    {
+        bool hot;
+
+        public BigChoice()
+        {
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer |
+                     ControlStyles.ResizeRedraw, true);
+            Cursor = Cursors.Hand;
+        }
+
+        public override Size GetPreferredSize(Size proposedSize) { return ToggleArt.Measure(this); }
+        protected override void OnMouseEnter(EventArgs e) { hot = true; Invalidate(); base.OnMouseEnter(e); }
+        protected override void OnMouseLeave(EventArgs e) { hot = false; Invalidate(); base.OnMouseLeave(e); }
+        protected override void OnGotFocus(EventArgs e) { Invalidate(); base.OnGotFocus(e); }
+        protected override void OnLostFocus(EventArgs e) { Invalidate(); base.OnLostFocus(e); }
+        protected override void OnPaint(PaintEventArgs e) { ToggleArt.Paint(this, e.Graphics, Checked, true, hot || Focused); }
+    }
+
     sealed class BuilderForm : Form
     {
         const string RepoUrl = "https://github.com/StormEf4/BEN-DROWNED.git";
@@ -273,7 +358,7 @@ namespace BenDrowned
         internal static readonly Color ColPanel = Color.FromArgb(22, 15, 27);
         internal static readonly Color ColPanelHot = Color.FromArgb(36, 22, 42);
         internal static readonly Color ColText = Color.FromArgb(228, 216, 198);
-        internal static readonly Color ColDim = Color.FromArgb(146, 128, 152);
+        internal static readonly Color ColDim = Color.FromArgb(190, 176, 196); // hints and notes: dimmer than the text, still easy to read
         internal static readonly Color ColAccent = Color.FromArgb(150, 18, 26);
         internal static readonly Color ColAccentHot = Color.FromArgb(200, 34, 42);
         internal static readonly Color ColPurple = Color.FromArgb(96, 46, 122);
@@ -330,8 +415,8 @@ namespace BenDrowned
             BackColor = ColBack;
             ForeColor = ColText;
             Font = new Font("Segoe UI", 9.75f);
-            ClientSize = new Size(620, 890);
-            MinimumSize = new Size(560, 850);
+            ClientSize = new Size(620, 960);
+            MinimumSize = new Size(560, 900);
             StartPosition = FormStartPosition.CenterScreen;
             DoubleBuffered = true;
             SetStyle(ControlStyles.ResizeRedraw, true);
@@ -495,7 +580,7 @@ namespace BenDrowned
             optionsBox.Controls.Add(new Label {
                 Text = "OPTIONS",
                 ForeColor = ColGold,
-                Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+                Font = new Font("Segoe UI", 9.75f, FontStyle.Bold),
                 AutoSize = true,
                 Location = new Point(12, 10),
             });
@@ -505,33 +590,26 @@ namespace BenDrowned
                     y = AddChoice(optionsBox, option, y);
                     continue;
                 }
-                option.Box = new CheckBox {
+                option.Box = new BigCheck {
                     Text = option.Label,
                     Checked = GetBool(option.Key, option.Default),
+                    BackColor = ColPanel,
                     ForeColor = ColText,
-                    FlatStyle = FlatStyle.Flat,
+                    Font = new Font("Segoe UI", 10.5f),
                     AutoSize = true,
-                    Location = new Point(14, y),
+                    Location = new Point(12, y),
                 };
-                option.Box.FlatAppearance.BorderColor = ColPurple;
-                option.Box.FlatAppearance.CheckedBackColor = ColAccent;
-                option.Box.FlatAppearance.MouseOverBackColor = ColPanelHot;
                 var opt = option;
                 option.Box.CheckedChanged += delegate {
                     settings[opt.Key] = opt.Box.Checked ? "1" : "0";
                     SaveSettings();
                 };
                 optionsBox.Controls.Add(option.Box);
+                y += option.Box.PreferredSize.Height;
                 if (option.Hint != null) {
-                    optionsBox.Controls.Add(new Label {
-                        Text = option.Hint,
-                        ForeColor = ColDim,
-                        AutoSize = true,
-                        Location = new Point(32, y + 22),
-                    });
-                    y += 46;
+                    y = AddHint(optionsBox, option.Hint, y) + 10;
                 } else {
-                    y += 28;
+                    y += 6;
                 }
             }
             optionsBox.Controls.Add(new Label {
@@ -539,7 +617,7 @@ namespace BenDrowned
                 ForeColor = ColDim,
                 Font = new Font(Font, FontStyle.Italic),
                 AutoSize = true,
-                Location = new Point(14, y + 4),
+                Location = new Point(14, y + 2),
             });
             optionsBox.Size = new Size(580, y + 32);
 
@@ -580,9 +658,9 @@ namespace BenDrowned
                 ScrollBars = ScrollBars.Vertical,
                 WordWrap = true,
                 BackColor = ColPanel,
-                ForeColor = ColDim,
+                ForeColor = ColText,
                 BorderStyle = BorderStyle.None,
-                Font = new Font("Consolas", 9f),
+                Font = new Font("Consolas", 9.75f),
                 Location = new Point(20, buttonsTop + 90),
                 Size = new Size(580, ClientSize.Height - (buttonsTop + 90) - 16),
                 Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
@@ -592,6 +670,22 @@ namespace BenDrowned
                 header, dropPanel, romStatus, optionsBox, buildButton, playButton, folderButton, statusLabel, progress,
                 logBox,
             });
+        }
+
+        // A hint under an option, wrapped to the box's width. Returns where the next thing goes.
+        int AddHint(Control parent, string text, int y)
+        {
+            var size = TextRenderer.MeasureText(text, Font, new Size(526, 0), TextFormatFlags.WordBreak);
+            var hint = new Label {
+                Text = text,
+                ForeColor = ColDim,
+                BackColor = Color.Transparent,
+                AutoSize = false,
+                Size = new Size(530, size.Height + 2),
+                Location = new Point(42, y),
+            };
+            parent.Controls.Add(hint);
+            return hint.Bottom;
         }
 
         // A choice of two (an option with an OffLabel): two buttons in a panel of their own, each with its hint under it,
@@ -605,14 +699,14 @@ namespace BenDrowned
                 Size = new Size(578, 100),
             };
             opt.Box = new CheckBox { Checked = GetBool(opt.Key, opt.Default), Visible = false };
-            opt.OffChoice = MakeChoice(opt.OffLabel, !opt.Box.Checked, 0);
-            opt.OnChoice = MakeChoice(opt.Label, opt.Box.Checked, 46);
+            int py = 0;
+            opt.OffChoice = MakeChoice(opt.OffLabel, !opt.Box.Checked, py);
             panel.Controls.Add(opt.OffChoice);
+            py = AddHint(panel, opt.OffHint, py + opt.OffChoice.PreferredSize.Height) + 10;
+            opt.OnChoice = MakeChoice(opt.Label, opt.Box.Checked, py);
             panel.Controls.Add(opt.OnChoice);
-            panel.Controls.Add(new Label { Text = opt.OffHint, ForeColor = ColDim, AutoSize = true,
-                                           Location = new Point(32, 22) });
-            panel.Controls.Add(new Label { Text = opt.Hint, ForeColor = ColDim, AutoSize = true,
-                                           Location = new Point(32, 68) });
+            py = AddHint(panel, opt.Hint, py + opt.OnChoice.PreferredSize.Height) + 14;
+            panel.Height = py;
             panel.Paint += (s, e) => {
                 using (var pen = new Pen(ColPurple)) {
                     e.Graphics.DrawLine(pen, 14, panel.Height - 6, panel.Width - 14, panel.Height - 6);
@@ -624,24 +718,20 @@ namespace BenDrowned
                 SaveSettings();
             };
             optionsBox.Controls.Add(panel);
-            return y + panel.Height + 4;
+            return y + panel.Height + 6;
         }
 
         RadioButton MakeChoice(string text, bool isChecked, int y)
         {
-            var choice = new RadioButton {
+            return new BigChoice {
                 Text = text,
                 Checked = isChecked,
+                BackColor = ColPanel,
                 ForeColor = ColText,
-                Font = new Font(Font, FontStyle.Bold),
-                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 11f, FontStyle.Bold),
                 AutoSize = true,
-                Location = new Point(14, y),
+                Location = new Point(12, y),
             };
-            choice.FlatAppearance.BorderColor = ColPurple;
-            choice.FlatAppearance.CheckedBackColor = ColAccent;
-            choice.FlatAppearance.MouseOverBackColor = ColPanelHot;
-            return choice;
         }
 
         bool MouseOverDrop()
