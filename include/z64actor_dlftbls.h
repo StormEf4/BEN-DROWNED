@@ -17,7 +17,7 @@ struct ActorProfile;
 
 typedef enum ActorId {
     #include "tables/actor_table.h"
-    /* 0x2B2 */ ACTOR_ID_MAX // originally "ACTOR_DLF_MAX"
+    /* 0x2B9 */ ACTOR_ID_MAX // originally "ACTOR_DLF_MAX"
 } ActorId;
 
 #undef DEFINE_ACTOR

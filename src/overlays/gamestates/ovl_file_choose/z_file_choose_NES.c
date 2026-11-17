@@ -5,6 +5,7 @@
  */
 
 #include "z_file_select.h"
+#include "ben/ben.h" // BEN
 #include "overlays/gamestates/ovl_opening/z_opening.h"
 #include "z64rumble.h"
 #include "z64save.h"
@@ -2413,6 +2414,9 @@ void FileSelect_InitContext(GameState* thisx) {
 
     Sram_Alloc(&this->state, &this->sramCtx);
     func_801457CC(&this->state, &this->sramCtx);
+    if (Sram_BenPlantBootSave(&this->state, &this->sramCtx)) {
+        func_801457CC(&this->state, &this->sramCtx); // BEN: read the slots again, now with BEN's file in one
+    }
 
     this->menuMode = FS_MENU_MODE_INIT;
 

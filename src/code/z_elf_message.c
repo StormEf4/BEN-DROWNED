@@ -13,11 +13,17 @@
 #include "global.h"
 #include "z64save.h"
 #include "z64scene.h"
+#include "ben/ben.h" // BEN
 
 /**
  * Gets the relevant text ID for Tatl hints in first cycle.
  */
 u16 QuestHint_GetTatlTextId(PlayState* play) {
+    // BEN: Tatl knows where the story wants you, and she doesn't like it
+    if (Ben_GetHintTextId(play) != 0) {
+        return Ben_GetHintTextId(play);
+    }
+
     if (INV_CONTENT(ITEM_OCARINA_OF_TIME) == ITEM_OCARINA_OF_TIME) {
         return 0;
     }
